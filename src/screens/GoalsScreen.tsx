@@ -1,13 +1,13 @@
 import React, { memo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Variants } from 'framer-motion';
+
 import {
   MOCK_WEALTH_GOALS,
 } from '../data/wealthTwinData';
 import type { WealthGoal } from '../data/wealthTwinData';
 import {
   Plus, ChevronRight, Zap, Target, Clock,
-  ArrowRight, CheckCircle2, TrendingUp, AlertCircle, Sparkles,
+  CheckCircle2, TrendingUp, AlertCircle, Sparkles,
 } from 'lucide-react';
 import type { ProfileData } from '../types/profile';
 import { containerVars, itemVars, SectionHeader, fmtShort as twinFmtShort } from './twin/TwinUtils';
@@ -31,7 +31,6 @@ const statusConfig: Record<string, { label: string; color: string; bg: string; b
 
 /* Detail Sheet */
 const GoalDetail: React.FC<{ goal: WealthGoal; onClose: () => void }> = ({ goal, onClose }) => {
-  const sc = statusConfig[goal.status] || statusConfig['on-track'];
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end" onClick={onClose}>
@@ -100,7 +99,7 @@ const GoalDetail: React.FC<{ goal: WealthGoal; onClose: () => void }> = ({ goal,
   );
 };
 
-const GoalsScreen: React.FC<{ profile: ProfileData }> = ({ profile }) => {
+const GoalsScreen: React.FC<{ profile: ProfileData }> = ({ profile: _profile }) => {
   const [selectedGoal, setSelectedGoal] = useState<WealthGoal | null>(null);
 
 

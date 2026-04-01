@@ -19,12 +19,7 @@ import {
 
 
 
-const priorityStyles: Record<string, string> = {
-  critical: 'bg-red-500/10 text-red-500 border-red-500/20',
-  high: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
-  medium: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  low: 'bg-slate-100 text-slate-400 border-slate-200',
-};
+
 
 interface Props {
   profile: ProfileData;

@@ -1,23 +1,20 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
-import type { Variants } from 'framer-motion';
+
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { MOCK_PORTFOLIO } from '../data/mockData';
+
 import {
   MOCK_LINKED_ACCOUNTS, MOCK_AI_INTERVENTIONS, NET_WORTH_METRICS,
   MOCK_SIMULATION_PATHS, UNIFIED_FINANCIAL_IDENTITY,
 } from '../data/wealthTwinData';
 import {
-  TrendingUp, Search, ChevronRight, ShieldCheck, History, Zap,
-  BarChart3, Layers, ArrowUpRight, ArrowRight, Sparkles, Clock, Target,
+  TrendingUp, Search, ChevronRight, ShieldCheck, Zap,
+  BarChart3, ArrowUpRight, ArrowRight, Sparkles, Target,
 } from 'lucide-react';
 import type { ProfileData } from '../types/profile';
-import { SectionHeader, containerVars, itemVars, fmtShort as twinFmtShort } from './twin/TwinUtils';
+import { containerVars, itemVars, fmtShort as twinFmtShort } from './twin/TwinUtils';
 
-const fmt = (v: number) =>
-  v >= 10000000 ? `${(v / 10000000).toFixed(2)} Cr` :
-  v >= 100000 ? `${(v / 100000).toFixed(1)} L` :
-  v.toLocaleString('en-IN');
+
 
 const fmtShort = (v: number) =>
   v >= 10000000 ? `${(v / 10000000).toFixed(1)}Cr` :
@@ -36,7 +33,7 @@ const investAllocation = [
   { name: 'EPF + PPF', value: 215000 + 520000, color: '#536375', pct: 26 },
 ];
 
-const InvestScreen: React.FC<{ profile: ProfileData }> = () => {
+const InvestScreen: React.FC<{ profile: ProfileData }> = ({ profile: _profile }) => {
 
 
   const totalInvestments = UNIFIED_FINANCIAL_IDENTITY.totalInvestments + UNIFIED_FINANCIAL_IDENTITY.totalRetirement;
@@ -175,7 +172,7 @@ const InvestScreen: React.FC<{ profile: ProfileData }> = () => {
                     <YAxis hide />
                     <Tooltip
                       contentStyle={{ background: '#0f172a', border: 'none', borderRadius: 12, color: '#fff', fontSize: 10, padding: '8px 12px' }}
-                      formatter={(val: number) => [`₹${fmtShort(val)}`, '']}
+                      formatter={(val: any) => [`₹${fmtShort(Number(val))}`, '']}
                     />
                     <Area type="monotone" dataKey="Conservative" stroke="#ef4444" strokeWidth={2} fill="transparent" strokeDasharray="5 5" dot={false} />
                     <Area type="monotone" dataKey="Optimized" stroke="#10b981" strokeWidth={3} fill="url(#investGrad)"
