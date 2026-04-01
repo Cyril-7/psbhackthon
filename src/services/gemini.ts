@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const API_KEY = "AIzaSyCtURgQF6OjmH6q6PpN3G6zQwtZF41m3yQ";
-const genAI = new GoogleGenerativeAI(API_KEY);
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(API_KEY || "");
 
 // Core helper: generate content from a prompt
 export const getGeminiResponse = async (prompt: string): Promise<string | null> => {
