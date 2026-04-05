@@ -65,15 +65,15 @@ export const SectionHeader = ({
       <Icon className="w-5 h-5" />
     </div>
     <div className="flex-1 min-w-0">
-      <div className="flex items-center gap-2 flex-wrap mb-1">
-        <h2 className="font-black text-[#1b3a57] text-[17px] tracking-tight uppercase leading-none mt-0.5">{title}</h2>
+      <div className="flex flex-col mb-1">
+        <h2 className="font-black text-[#1b3a57] text-[17px] tracking-tight uppercase leading-tight mt-0.5">{title}</h2>
         {badge && (
-          <span className="text-[10px] font-black uppercase tracking-widest text-[#1f8c5c] leading-none ml-2">
+          <span className="text-[10px] font-black uppercase tracking-widest text-[#1f8c5c] leading-none mt-1">
             {badge}
           </span>
         )}
       </div>
-      {subtitle && <p className="text-[#8a9bb0] text-[10px] font-black uppercase tracking-widest leading-none">{subtitle}</p>}
+      {subtitle && <p className="text-[#8a9bb0] text-[10px] font-black uppercase tracking-widest leading-none mt-1">{subtitle}</p>}
     </div>
   </div>
 );

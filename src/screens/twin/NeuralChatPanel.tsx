@@ -4,7 +4,11 @@ import {
   Brain, Send, Sparkles, Loader2, Zap, TrendingUp, Shield, Target as TargetIcon, HelpCircle,
 } from 'lucide-react';
 import { getWealthTwinChatResponse } from '../../services/gemini';
-import { NET_WORTH_METRICS, MOCK_RISK_ALERTS, TWIN_OVERVIEW } from '../../data/wealthTwinData';
+import type { ChatMessage as GeminiChatMessage } from '../../services/gemini';
+import { 
+  NET_WORTH_METRICS, MOCK_RISK_ALERTS, TWIN_OVERVIEW, 
+  MOCK_PHYSICAL_ASSETS, MOCK_WEALTH_GOALS 
+} from '../../data/wealthTwinData';
 import type { ProfileData } from '../../types/profile';
 import { containerVars, itemVars, fmtShort } from './TwinUtils';
 
@@ -32,7 +36,7 @@ const NeuralChatPanel: React.FC<Props> = ({ profile }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const totalIncome = Number(profile.monthlySalary) + Number(profile.sideIncome);
-  const totalExpenses = Object.values(profile.expenses).reduce((a, b) => Number(a) + Number(b), 0);
+  const totalExpenses = Object.values(profile.expenses).reduce((a: number, b: string) => a + Number(b), 0);
   const riskAlerts = MOCK_RISK_ALERTS.map(a => a.title);
 
   const [messages, setMessages] = useState<Message[]>([
@@ -56,22 +60,40 @@ const NeuralChatPanel: React.FC<Props> = ({ profile }) => {
     if (!msg || isLoading) return;
 
     const userMsg: Message = { role: 'user', content: msg, timestamp: new Date() };
+    const history: GeminiChatMessage[] = messages.map(m => ({
+      role: m.role,
+      content: m.content
+    }));
+
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
 
-    const response = await getWealthTwinChatResponse(
-      msg, profile, NET_WORTH_METRICS.total, totalIncome, totalExpenses, riskAlerts
-    );
+    try {
+      const response = await getWealthTwinChatResponse(
+        msg, history, profile, Number(NET_WORTH_METRICS.total), 
+        totalIncome, totalExpenses, riskAlerts,
+        MOCK_PHYSICAL_ASSETS, MOCK_WEALTH_GOALS
+      );
 
-    const assistantMsg: Message = {
-      role: 'assistant',
-      content: response || "I'm experiencing a neural sync interruption. Please try again in a moment.",
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, assistantMsg]);
-    setIsLoading(false);
-    inputRef.current?.focus();
+      const assistantMsg: Message = {
+        role: 'assistant',
+        content: response || "I'm experiencing a brief neural sync delay. Please try again soon.",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, assistantMsg]);
+    } catch (err) {
+      console.error("Neural Link failed:", err);
+      const errorMsg: Message = {
+        role: 'assistant',
+        content: "I lost contact with the wealth matrix. Please try refresh.",
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsLoading(false);
+      inputRef.current?.focus();
+    }
   };
 
   return (
@@ -86,7 +108,7 @@ const NeuralChatPanel: React.FC<Props> = ({ profile }) => {
             </div>
             <div>
               <p className="text-[10px] font-black text-[#1f8c5c] uppercase tracking-widest leading-tight">Neural Link Active</p>
-              <p className="text-[11px] text-[#5c6065] font-medium">Gemini 2.0 Flash • {TWIN_OVERVIEW.dataPoints} data points synced</p>
+              <p className="text-[11px] text-[#5c6065] font-medium">Gemini 1.5 Flash • {TWIN_OVERVIEW.dataPoints} data points synced</p>
             </div>
           </div>
           <div className="flex items-center gap-2.5 bg-[#d2efe2] border border-[#bce3d1] px-3 py-1.5 rounded-full">
@@ -113,14 +135,14 @@ const NeuralChatPanel: React.FC<Props> = ({ profile }) => {
             }`}>
               {msg.role === 'assistant' && (
                 <div className="absolute -left-2 -top-2">
-                  <div className="w-6 h-6 bg-emerald-500/20 border border-emerald-500/30 rounded-lg flex items-center justify-center">
-                    <Brain className="w-3 h-3 text-emerald-500" />
+                  <div className="w-10 h-10 bg-emerald-500/20 border border-emerald-500/30 rounded-lg flex items-center justify-center">
+                    <Brain className="w-6 h-6 text-emerald-500" />
                   </div>
                 </div>
               )}
               <div className="px-5 py-4">
                 <p className="text-sm font-medium leading-relaxed whitespace-pre-line">{msg.content}</p>
-                <p className={`text-[9px] font-bold mt-2 ${msg.role === 'user' ? 'text-slate-500' : 'text-slate-300'}`}>
+                <p className={`text-[9px] font-bold mt-2 ${msg.role === 'user' ? 'text-slate-200' : 'text-slate-400'}`}>
                   {msg.timestamp.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
@@ -142,7 +164,7 @@ const NeuralChatPanel: React.FC<Props> = ({ profile }) => {
 
       {/* ── Quick Prompts ── */}
       {messages.length <= 2 && (
-        <motion.div variants={itemVars} className="shrink-0 mb-4">
+        <motion.div variants={itemVars} className="shrink-0 mb-4 px-1">
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Quick Actions</p>
           <div className="flex flex-wrap gap-2">
             {quickPrompts.map((qp, i) => (
@@ -160,7 +182,7 @@ const NeuralChatPanel: React.FC<Props> = ({ profile }) => {
       )}
 
       {/* ── Input Bar ── */}
-      <motion.div variants={itemVars} className="shrink-0 mt-auto pt-4 bg-[#f5f4ef]">
+      <motion.div variants={itemVars} className="shrink-0 mt-auto pt-4 bg-[#f5f4ef] px-1">
         <div className="relative group">
           <input
             ref={inputRef}
@@ -168,7 +190,7 @@ const NeuralChatPanel: React.FC<Props> = ({ profile }) => {
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSend()}
             placeholder="Interrogate your wealth twin..."
-            className="w-full bg-[#fdfcf9] border border-[#e6e4d9] rounded-2xl py-4.5 pl-6 pr-16 text-sm font-medium placeholder-[#8a9bb0] focus:border-[#1f8c5c] focus:ring-4 focus:ring-[#1f8c5c]/5 outline-none transition-all shadow-sm"
+            className="w-full bg-[#fdfcf9] border border-[#e6e4d9] rounded-2xl py-4 pl-6 pr-16 text-sm font-medium placeholder-[#8a9bb0] focus:border-[#1f8c5c] focus:ring-4 focus:ring-[#1f8c5c]/5 outline-none transition-all shadow-sm"
           />
           <button
             onClick={() => handleSend()}

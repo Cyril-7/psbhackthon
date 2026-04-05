@@ -32,7 +32,12 @@ const allocationData = [
   { name: 'Business', value: UNIFIED_FINANCIAL_IDENTITY.totalBusiness, color: '#0891b2' },
 ];
 
-const DashboardScreen: React.FC<{ profile: ProfileData }> = ({ profile }) => {
+interface DashboardProps {
+  profile: ProfileData;
+  onSectionChange: (tab: any) => void;
+}
+
+const DashboardScreen = ({ profile, onSectionChange }: DashboardProps) => {
   const containerVars: Variants = {
     hidden: { opacity: 0 },
     show: { opacity: 1, transition: { staggerChildren: 0.08 } },
@@ -69,9 +74,13 @@ const DashboardScreen: React.FC<{ profile: ProfileData }> = ({ profile }) => {
           <motion.button whileTap={{ scale: 0.9 }} className="p-2 bg-[#fdfcf9] rounded-xl text-slate-400 hover:text-slate-900 border border-[#e6e4d9] transition-all shadow-sm">
             <Bell className="w-4 h-4" />
           </motion.button>
-          <div className="w-9 h-9 rounded-full bg-[#fdfcf9] border-2 border-white shadow-sm overflow-hidden">
-            <div className="w-full h-full flex items-center justify-center bg-[#f5f4f0] text-[#1f8c5c] font-black text-sm">{profile.fullName.charAt(0)}</div>
-          </div>
+          <motion.button 
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onSectionChange('profile')}
+            className="w-9 h-9 rounded-full bg-[#fdfcf9] border-2 border-white shadow-sm overflow-hidden flex items-center justify-center bg-[#f5f4f0] text-[#1f8c5c] font-black text-sm"
+          >
+            {profile.fullName.charAt(0)}
+          </motion.button>
         </div>
       </header>
 

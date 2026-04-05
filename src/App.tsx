@@ -5,7 +5,7 @@ import InvestScreen from './screens/InvestScreen'
 import ProtectScreen from './screens/ProtectScreen'
 import DigitalTwinScreen from './screens/DigitalTwinScreen'
 import ProfileScreen from './screens/ProfileScreen'
-import { Home, Target, TrendingUp, Brain, ShieldCheck } from 'lucide-react'
+import { Home, Target, TrendingUp, Brain, ShieldCheck, User } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { defaultProfile, type ProfileData } from './types/profile'
 
@@ -13,18 +13,23 @@ type Tab = 'home' | 'goals' | 'invest' | 'protect' | 'twin' | 'profile'
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('home')
-  const [profile, setProfile] = useState<ProfileData>(defaultProfile)
+  const [profile, setProfile] = useState<ProfileData>(() => {
+    const saved = localStorage.getItem('securewealth_profile')
+    return saved ? JSON.parse(saved) : defaultProfile
+  })
 
   const updateProfile = (field: keyof ProfileData, value: any) => {
-    setProfile(prev => ({ ...prev, [field]: value }))
+    const newProfile = { ...profile, [field]: value }
+    setProfile(newProfile)
+    localStorage.setItem('securewealth_profile', JSON.stringify(newProfile))
   }
 
   const renderScreen = () => {
     switch (activeTab) {
       case 'home':
-        return <DashboardScreen profile={profile} />
+        return <DashboardScreen profile={profile} onSectionChange={setActiveTab} />
       case 'goals':
-        return <GoalsScreen profile={profile} />
+        return <GoalsScreen profile={profile} onSectionChange={setActiveTab} />
       case 'invest':
         return <InvestScreen profile={profile} />
       case 'protect':
@@ -32,9 +37,9 @@ function App() {
       case 'twin':
         return <DigitalTwinScreen profile={profile} />
       case 'profile':
-        return <ProfileScreen profile={profile} onUpdate={updateProfile} />
+        return <ProfileScreen profile={profile} onUpdate={updateProfile} onComplete={() => setActiveTab('home')} />
       default:
-        return <DashboardScreen profile={profile} />
+        return <DashboardScreen profile={profile} onSectionChange={setActiveTab} />
     }
   }
 
@@ -73,32 +78,12 @@ function App() {
             onClick={() => setActiveTab('goals')} 
           />
 
-          {/* Core Strategic Intelligence Button (Twin) */}
-          <div className="flex-1 flex flex-col items-center justify-center relative min-w-0">
-            {activeTab === 'twin' && (
-              <motion.div 
-                layoutId="navTabIndicator"
-                className="absolute top-0 w-12 h-1 bg-blue-500 rounded-b-full shadow-[0_2px_4px_rgba(59,130,246,0.3)]"
-              />
-            )}
-            <button
-              onClick={() => setActiveTab('twin')}
-              className="flex flex-col items-center justify-center gap-1 group relative h-full w-full"
-            >
-              <div className={`transition-all duration-300 p-1.5 rounded-full border-2 ${
-                activeTab === 'twin' 
-                  ? 'border-blue-500 bg-blue-50/50 text-blue-600 scale-105' 
-                  : 'border-slate-300 text-slate-400 group-hover:border-slate-400'
-              }`}>
-                <Brain className="w-5 h-5 stroke-[2.5]" />
-              </div>
-              <span className={`text-[10px] font-bold tracking-tight transition-all duration-300 ${
-                activeTab === 'twin' ? 'text-blue-600' : 'text-slate-400'
-              }`}>
-                My Twin
-              </span>
-            </button>
-          </div>
+          <NavItem 
+            icon={<Brain className="w-[22px] h-[22px]" />} 
+            label="My Twin" 
+            active={activeTab === 'twin'} 
+            onClick={() => setActiveTab('twin')} 
+          />
 
           <NavItem 
             icon={<TrendingUp className="w-[22px] h-[22px]" />} 
@@ -112,6 +97,13 @@ function App() {
             label="Protect" 
             active={activeTab === 'protect'} 
             onClick={() => setActiveTab('protect')} 
+          />
+
+          <NavItem 
+            icon={<User className="w-[22px] h-[22px]" />} 
+            label="Profile" 
+            active={activeTab === 'profile'} 
+            onClick={() => setActiveTab('profile')} 
           />
           
         </nav>

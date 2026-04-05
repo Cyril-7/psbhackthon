@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -23,7 +23,9 @@ ChartJS.register(
   Filler,
   Legend
 );
-import { TrendingUp, Clock, Layers, Zap, LayoutGrid, Brain } from 'lucide-react';
+import { 
+  TrendingUp, Clock, Layers, Zap, LayoutGrid, Brain, Plus, X, Shield, Landmark 
+} from 'lucide-react';
 import { 
   MOCK_LINKED_ACCOUNTS, MOCK_NET_WORTH_TIMELINE, NET_WORTH_METRICS, TWIN_OVERVIEW 
 } from '../../data/wealthTwinData';
@@ -44,8 +46,129 @@ const categoryConfig: Record<string, { label: string; color: string }> = {
   business:   { label: 'SME/Corp', color: '#334155' },
 };
 
+const AddAccountSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+
+  const handleLink = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      onClose();
+    }, 2000);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        className="w-full max-w-[430px] bg-[#fcfbf9] rounded-t-[32px] sm:rounded-[40px] p-8 space-y-6 relative border border-[#e6e4d9] shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="w-12 h-1.5 bg-[#e6e4d9] rounded-full mx-auto sm:hidden mb-2" />
+        
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+            <h3 className="text-2xl font-black text-[#1b3a57] tracking-tight">LINK NEW NODE</h3>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[.2em]">Institutional Account Aggregator</p>
+          </div>
+          <button onClick={onClose} className="p-2 bg-white border border-[#e6e4d9] rounded-xl text-slate-400 hover:text-slate-900 transition-all">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {step === 1 ? (
+          <div className="space-y-6 py-4">
+            <div className="grid grid-cols-2 gap-3">
+              {['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'KOTAK', 'HSBC'].map(bank => (
+                <button 
+                  key={bank}
+                  onClick={() => setStep(2)}
+                  className="bg-white border border-[#e6e4d9] p-4 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all hover:border-[#1b3a57] hover:bg-[#f5f7f9] group"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#f5f4f0] flex items-center justify-center text-slate-500 group-hover:text-[#1b3a57] transition-colors">
+                    <Landmark className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] font-black uppercase text-[#1b3a57]">{bank}</span>
+                </button>
+              ))}
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Or integrate via Account Aggregator</p>
+              <button className="mt-4 w-full bg-[#1b3a57] text-[#0cd89a] py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-blue-900/10 active:scale-[0.98] transition-all">
+                Connect via Sahamati AA
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-8 py-6">
+            <div className="bg-white border border-[#e6e4d9] rounded-2xl p-5 space-y-4">
+              <div className="flex items-center gap-4 border-b border-[#f5f4f0] pb-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                  <Shield className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Authorization Pending</p>
+                  <p className="text-sm font-black text-[#1b3a57]">Confirm OTP Sent to +91 ••••• ••923</p>
+                </div>
+              </div>
+              <div className="flex justify-center gap-3">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="w-10 h-12 bg-[#f5f4f0] border border-[#e6e4d9] rounded-xl flex items-center justify-center font-black text-xl text-[#1b3a57]">
+                    {i === 1 ? '7' : ''}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button 
+              onClick={handleLink}
+              disabled={loading}
+              className="w-full bg-[#1b3a57] text-white py-5 rounded-2xl font-black uppercase tracking-[.3em] text-[11px] flex items-center justify-center gap-3 relative overflow-hidden group shadow-xl"
+            >
+              <AnimatePresence>
+                {loading && (
+                  <motion.div 
+                    initial={{ x: "-100%" }} animate={{ x: "100%" }} 
+                    transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                    className="absolute inset-0 bg-white/10" 
+                  />
+                )}
+              </AnimatePresence>
+              {loading ? 'Authenticating...' : 'Authorize Institutional Link'}
+            </button>
+            <button onClick={() => setStep(1)} className="w-full text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">
+              Reset selection
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center justify-center gap-2 opacity-40 py-2">
+          <Shield className="w-3 h-3" />
+          <span className="text-[8px] font-black uppercase tracking-[.4em]">256-BIT AES ENCRYPTED</span>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 const WealthOverviewPanel: React.FC<Props> = ({ aiInsight }) => {
-  const accounts = useMemo(() => MOCK_LINKED_ACCOUNTS, []);
+  const [accounts, setAccounts] = useState<typeof MOCK_LINKED_ACCOUNTS>(() => {
+    const saved = localStorage.getItem('securewealth_linked_accounts');
+    return saved ? JSON.parse(saved) : MOCK_LINKED_ACCOUNTS;
+  });
+  const [showAddAccount, setShowAddAccount] = useState(false);
+
+  const deleteAccount = (id: string) => {
+    const newAccounts = accounts.filter(acc => acc.id !== id);
+    setAccounts(newAccounts);
+    localStorage.setItem('securewealth_linked_accounts', JSON.stringify(newAccounts));
+  };
 
   return (
     <motion.div variants={containerVars} initial="hidden" animate="show" className="space-y-8">
@@ -70,15 +193,15 @@ const WealthOverviewPanel: React.FC<Props> = ({ aiInsight }) => {
             {/* Metric Row - Monochromatic Professional */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-6">
               {[
-                { label: 'Growth', value: `+${NET_WORTH_METRICS.monthlyGrowth}%`, color: 'text-emerald-600', sub: '' },
-                { label: 'CAGR', value: `${NET_WORTH_METRICS.annualCAGR}%`, color: 'text-slate-900', sub: '' },
-                { label: 'Debt', value: `${NET_WORTH_METRICS.debtBurdenRatio}%`, color: 'text-[#5c7a92]', sub: 'Debt-to-Equity ratio' },
-                { label: 'Liquidity', value: `${NET_WORTH_METRICS.emergencyRunwayMonths}mo`, color: 'text-slate-900', sub: `Liquidity: ${NET_WORTH_METRICS.emergencyRunwayMonths}mo` },
+                { label: 'Growth', value: `+${NET_WORTH_METRICS.monthlyGrowth}%`, color: 'text-emerald-500', sub: '30-day change in total equity' },
+                { label: 'CAGR', value: `${NET_WORTH_METRICS.annualCAGR}%`, color: 'text-[#1b3a57]', sub: 'Compound Annual Growth Rate' },
+                { label: 'Debt', value: `${NET_WORTH_METRICS.debtBurdenRatio}%`, color: 'text-blue-600', sub: 'Total Liabilities / Total Assets' },
+                { label: 'Liquidity', value: `${NET_WORTH_METRICS.emergencyRunwayMonths}mo`, color: 'text-[#1b3a57]', sub: 'Cash / Monthly Expenditures' },
               ].map(m => (
-                <div key={m.label} className="bg-white/70 border border-[#e6e4d9] rounded-2xl p-4 flex flex-col items-center justify-center min-h-[90px] shadow-[0_2px_8px_rgba(0,0,0,0.01)] transition-all hover:bg-white/90">
+                <div key={m.label} className="bg-white/70 border border-[#e6e4d9] rounded-2xl p-4 flex flex-col items-center justify-center min-h-[100px] shadow-[0_2px_8px_rgba(0,0,0,0.01)] transition-all hover:bg-white/90">
                   <p className="text-[9px] font-bold uppercase tracking-widest text-[#5c6065] mb-2">{m.label}</p>
                   <p className={`text-xl sm:text-2xl font-black tracking-tight ${m.color}`}>{m.value}</p>
-                  {m.sub && <p className="text-[10px] text-slate-500 font-medium mt-1">{m.sub}</p>}
+                  {m.sub && <p className="text-[9px] text-[#8a9bb0] font-bold uppercase tracking-widest mt-2">{m.sub}</p>}
                 </div>
               ))}
             </div>
@@ -216,41 +339,83 @@ const WealthOverviewPanel: React.FC<Props> = ({ aiInsight }) => {
 
       {/* ── Account List ── */}
       <motion.div variants={itemVars}>
-        <SectionHeader icon={TrendingUp} title="Linked Accounts" subtitle="Real-time multi-bank sync" badge={String(TWIN_OVERVIEW.institutionsLinked)} />
+        <SectionHeader icon={TrendingUp} title="Linked Accounts" subtitle="Real-time multi-bank sync" badge={String(accounts.length)} />
         <div className="space-y-3">
-          {accounts.map(acc => (
-            <motion.div key={acc.id} whileHover={{ y: -1 }}
-              className="bg-[#fdfcf9] border border-[#e6e4d9] rounded-[24px] p-4 flex items-center gap-4 shadow-[0_2px_12px_rgba(0,0,0,0.02)]"
-            >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg grayscale opacity-60 bg-slate-50 border border-slate-100">
-                {acc.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] sm:text-[14px] font-black text-slate-900 leading-tight truncate">{acc.institution}</p>
-                    <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-tighter truncate">{acc.accountType} • {acc.accountNumber}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-[13px] sm:text-[14px] font-black text-slate-900">
-                      ₹{fmtShort(Math.abs(acc.balance))}
-                    </p>
+          <AnimatePresence mode="popLayout">
+            {accounts.map(acc => (
+              <div key={acc.id} className="relative overflow-hidden rounded-[24px]">
+                {/* Deactivation Action (Behind the Card) */}
+                <div className="absolute inset-0 bg-[#dc2626] flex items-center justify-end px-8 rounded-[24px]">
+                  <div className="flex flex-col items-center gap-1 text-white opacity-80 group-swipe:opacity-100 transition-opacity">
+                    <X className="w-5 h-5" />
+                    <span className="text-[8px] font-black uppercase tracking-widest">Unlink</span>
                   </div>
                 </div>
+
+                <motion.div
+                  drag="x"
+                  dragConstraints={{ left: -100, right: 0 }}
+                  dragElastic={0}
+                  dragMomentum={false}
+                  onDragEnd={(_, info) => {
+                    if (info.offset.x < -80) {
+                      deleteAccount(acc.id);
+                    }
+                  }}
+                  initial={{ x: 0 }}
+                  animate={{ x: 0 }}
+                  whileHover={{ cursor: 'grab' }}
+                  whileTap={{ cursor: 'grabbing' }}
+                  className="bg-[#fdfcf9] border border-[#e6e4d9] rounded-[24px] p-4 flex items-center gap-4 shadow-[0_2px_12px_rgba(0,0,0,0.02)] relative z-10"
+                >
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg grayscale opacity-60 bg-slate-50 border border-slate-100">
+                    {acc.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] sm:text-[14px] font-black text-slate-900 leading-tight truncate">{acc.institution}</p>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-tighter truncate">{acc.accountType} • {acc.accountNumber}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-[13px] sm:text-[14px] font-black text-slate-900">
+                          ₹{fmtShort(Math.abs(acc.balance))}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-[.15em]">
+                      {categoryConfig[acc.category]?.label}
+                    </span>
+                    <div className="flex items-center gap-1 text-[8px] text-slate-400 font-bold uppercase tracking-tighter">
+                      <Clock className="w-2.5 h-2.5" />
+                      {acc.lastSync}
+                    </div>
+                  </div>
+                </motion.div>
               </div>
-              <div className="flex flex-col items-end gap-1.5 shrink-0">
-                <span className="text-[8px] font-black uppercase text-slate-400 tracking-[.15em]">
-                  {categoryConfig[acc.category]?.label}
-                </span>
-                <div className="flex items-center gap-1 text-[8px] text-slate-400 font-bold uppercase tracking-tighter">
-                  <Clock className="w-2.5 h-2.5" />
-                  {acc.lastSync}
-                </div>
-              </div>
-            </motion.div>
-          ))}
+            ))}
+          </AnimatePresence>
         </div>
+
+        {/* ── Add Account Button ── */}
+        <motion.div variants={itemVars} className="mt-4">
+          <button 
+            onClick={() => setShowAddAccount(true)}
+            className="w-full border-2 border-dashed border-[#e6e4d9] rounded-[24px] p-5 flex items-center justify-center gap-3 text-slate-400 hover:border-[#1b3a57] hover:text-[#1b3a57] transition-all group shadow-sm bg-[#fcfbf9]/50"
+          >
+            <div className="w-8 h-8 rounded-full bg-white border border-[#e6e4d9] flex items-center justify-center group-hover:bg-[#1b3a57] group-hover:text-[#0cd89a] transition-all">
+              <Plus className="w-4 h-4" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-[.2em]">Add institutional account</span>
+          </button>
+        </motion.div>
       </motion.div>
+
+      <AnimatePresence>
+        {showAddAccount && <AddAccountSheet onClose={() => setShowAddAccount(false)} />}
+      </AnimatePresence>
     </motion.div>
   );
 };

@@ -22,6 +22,7 @@ import {
   Heart,
   TrendingDown,
   Info,
+  X,
 } from 'lucide-react';
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -234,7 +235,13 @@ const Step6RiskQuiz = ({ data, update }: any) => (
 );
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-const ProfileScreen: React.FC<{ profile: ProfileData; onUpdate: (field: keyof ProfileData, value: any) => void }> = ({ profile, onUpdate }) => {
+interface ProfileProps {
+  profile: ProfileData;
+  onUpdate: (field: keyof ProfileData, value: any) => void;
+  onComplete?: () => void;
+}
+
+const ProfileScreen = ({ profile, onUpdate, onComplete }: ProfileProps) => {
   const [step, setStep] = useState(0);
 
   const update = (f: keyof ProfileData, v: any) => { onUpdate(f, v); };
@@ -249,7 +256,13 @@ const ProfileScreen: React.FC<{ profile: ProfileData; onUpdate: (field: keyof Pr
           <p className="text-[10px] font-black uppercase tracking-[.4em] text-brand-accent mb-1 leading-none">Security Provisioning</p>
           <h1 className="text-xl font-black tracking-tight text-brand-primary leading-none">Identity Architect</h1>
         </div>
-        <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400"><User className="w-5 h-5" /></div>
+        {onComplete ? (
+          <button onClick={onComplete} className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-brand-primary transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400"><User className="w-5 h-5" /></div>
+        )}
       </header>
 
       <div className="px-6 py-8">
@@ -364,7 +377,7 @@ const ProfileScreen: React.FC<{ profile: ProfileData; onUpdate: (field: keyof Pr
                   </div>
 
                   <button 
-                     onClick={() => {}} 
+                     onClick={() => onComplete?.()} 
                      className="w-full bg-brand-primary hover:bg-brand-accent text-white font-black py-5 rounded-2xl uppercase tracking-[.4em] text-[10px] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
                   >
                      <Shield className="w-4 h-4" /> Deploy to Digital Twin

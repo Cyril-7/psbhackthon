@@ -99,7 +99,12 @@ const GoalDetail: React.FC<{ goal: WealthGoal; onClose: () => void }> = ({ goal,
   );
 };
 
-const GoalsScreen: React.FC<{ profile: ProfileData }> = ({ profile: _profile }) => {
+interface GoalsProps {
+  profile: ProfileData;
+  onSectionChange: (tab: any) => void;
+}
+
+const GoalsScreen = ({ profile: _profile, onSectionChange: _onSectionChange }: GoalsProps) => {
   const [selectedGoal, setSelectedGoal] = useState<WealthGoal | null>(null);
 
 

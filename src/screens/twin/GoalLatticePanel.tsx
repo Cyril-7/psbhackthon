@@ -1,36 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip as ChartTooltipJS,
-  Filler,
-  Legend,
-} from 'chart.js';
-import { Line } from 'react-chartjs-2';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  ChartTooltipJS,
-  Filler,
-  Legend
-);
-import { Target, ChevronRight, BarChart3 } from 'lucide-react';
-import { MOCK_WEALTH_GOALS, MOCK_SIMULATION_PATHS } from '../../data/wealthTwinData';
+import { Target, ChevronRight } from 'lucide-react';
+import { MOCK_WEALTH_GOALS } from '../../data/wealthTwinData';
 import type { WealthGoal } from '../../data/wealthTwinData';
 import { 
   containerVars, itemVars, fmtShort, SectionHeader, ProgressBar 
 } from './TwinUtils';
-
-
 
 const GoalDetailSheet: React.FC<{ goal: WealthGoal; onClose: () => void }> = ({ goal, onClose }) => (
   <motion.div
@@ -137,80 +112,6 @@ const GoalLatticePanel: React.FC = () => {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* ── Path Simulation ── */}
-      <motion.div variants={itemVars}>
-        <div className="bg-[#fdfcf9] border border-[#e6e4d9] rounded-[24px] p-6 shadow-sm">
-          <SectionHeader icon={BarChart3} title="Forward Path Simulation" subtitle="Prospective wealth projections" />
-          <div className="h-56 mt-4">
-            <Line
-              data={{
-                labels: MOCK_SIMULATION_PATHS.map(d => d.year),
-                datasets: [
-                  {
-                    label: 'Optimized',
-                    data: MOCK_SIMULATION_PATHS.map(d => d.Optimized),
-                    borderColor: '#1f8c5c',
-                    borderWidth: 3,
-                    fill: true,
-                    backgroundColor: (context: any) => {
-                      const ctx = context.chart.ctx;
-                      const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-                      gradient.addColorStop(0, 'rgba(31, 140, 92, 0.1)');
-                      gradient.addColorStop(1, 'rgba(31, 140, 92, 0)');
-                      return gradient;
-                    },
-                    tension: 0.4,
-                    pointRadius: 3,
-                    pointBackgroundColor: '#1f8c5c',
-                    pointBorderColor: '#fff',
-                  },
-                  {
-                    label: 'Baseline',
-                    data: MOCK_SIMULATION_PATHS.map(d => d.Baseline),
-                    borderColor: '#8a9bb0',
-                    borderWidth: 1.5,
-                    borderDash: [5, 5],
-                    fill: false,
-                    tension: 0.4,
-                    pointRadius: 0,
-                  },
-                ],
-              }}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: { display: false },
-                  tooltip: {
-                    enabled: true,
-                    backgroundColor: '#1b3a57',
-                    padding: 12,
-                    cornerRadius: 12,
-                    callbacks: {
-                      label: (context: any) => `₹${fmtShort(context.parsed.y)}`,
-                    },
-                  },
-                },
-                scales: {
-                  x: {
-                    grid: { display: false },
-                    ticks: { color: '#8a9bb0', font: { size: 9, weight: '700' } },
-                  },
-                  y: {
-                    display: false,
-                    suggestedMin: Math.min(...MOCK_SIMULATION_PATHS.map(d => d.Baseline)) * 0.9,
-                  },
-                },
-              } as any}
-            />
-          </div>
-          <div className="flex justify-center gap-6 mt-6 border-t border-[#f1efe6] pt-4">
-            <div className="flex items-center gap-2.5"><div className="w-2.5 h-2.5 rounded-full bg-[#1f8c5c]" /><span className="text-[9px] font-black uppercase text-[#5c6065]">Institutional Path</span></div>
-            <div className="flex items-center gap-2.5"><div className="w-2.5 h-2.5 rounded-full bg-[#8a9bb0]" /><span className="text-[9px] font-black uppercase text-[#5c6065]">Baseline Curve</span></div>
           </div>
         </div>
       </motion.div>

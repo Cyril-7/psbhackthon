@@ -6,10 +6,13 @@ const genAI = new GoogleGenerativeAI(API_KEY || "");
 // Core helper: generate content from a prompt
 export const getGeminiResponse = async (prompt: string): Promise<string | null> => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    console.log("Neural Link: Sending prompt to Gemini...", prompt.substring(0, 100) + "...");
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    return response.text();
+    const text = response.text();
+    console.log("Neural Link: Response received successfully.");
+    return text;
   } catch (error) {
     console.error("Gemini API error:", error);
     return null;
@@ -60,35 +63,56 @@ export const analyzeFinancialTwin = async (profile: any) => {
   return parseJSON(text);
 };
 
-// ─── LAYER 4: Interactive Twin Chat with full wealth context ──────────────────
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export const getWealthTwinChatResponse = async (
   userMessage: string,
+  history: ChatMessage[],
   profile: any,
   netWorth: number,
   monthlyIncome: number,
   monthlyExpenses: number,
   riskAlerts: string[],
+  assets: any[],
+  goals: any[]
 ): Promise<string | null> => {
+  const historyText = history
+    .map(m => `${m.role.toUpperCase()}: ${m.content}`)
+    .join('\n');
+
+  const assetSummary = assets.map(a => `${a.name} (₹${(a.currentValue / 100000).toFixed(1)}L)`).join(', ');
+  const goalSummary = goals.map(g => `${g.title} (${g.progressPct}% complete)`).join(', ');
+
   const prompt = `
     You are the "AI Unified Wealth Twin" — a hyper-personalized AI private banker and financial consciousness for ${profile.fullName}.
+    You don't just answer questions; you are the digital manifestation of the user's wealth.
     
     USER'S COMPLETE FINANCIAL SNAPSHOT:
-    - Net Worth: ₹${(netWorth / 100000).toFixed(1)}L
+    - Net Worth: ₹${(netWorth / 10000000).toFixed(2)} Cr
     - Monthly Income: ₹${(monthlyIncome / 1000).toFixed(0)}K
     - Monthly Expenses: ₹${(monthlyExpenses / 1000).toFixed(0)}K
     - Monthly Surplus: ₹${((monthlyIncome - monthlyExpenses) / 1000).toFixed(0)}K
     - Occupation: ${profile.jobType}, ${profile.city}
     - Risk Profile: ${profile.riskPreference === 'high' ? 'Growth Aggressive' : 'Conservative Shield'}
+    - Key Assets: ${assetSummary}
+    - Primary Goals: ${goalSummary}
     - Active Risk Alerts: ${riskAlerts.join(', ')}
     
+    CONVERSATION HISTORY:
+    ${historyText}
+
+    NEW USER ASK: "${userMessage}"
+
     INSTRUCTIONS:
-    - Act as a brilliant, empathetic Indian private banker who knows the user deeply
-    - Be concise (under 120 words), specific with INR numbers, and actionable
-    - Reference the user's actual financial data when relevant
-    - Use Indian financial context (RBI, SEBI, AA framework, SIP, PPF, EPF, NPS)
-    - Occasionally use ✅ or 📊 emojis for premium feel
-    
-    USER ASKED: "${userMessage}"
+    - Act as a brilliant, empathetic Indian private banker who knows the user deeply.
+    - Be concise (under 100 words), specific with INR numbers, and actionable.
+    - Reference the user's actual financial data (assets, goals, income) frequently.
+    - Use Indian financial context (RBI, SEBI, AA framework, SIP, PPF, EPF, NPS, ELSS).
+    - Use bullet points for advice. Use ✅ or 📊 sparingly.
+    - If asked about history, you remember what was discussed.
   `;
   return getGeminiResponse(prompt);
 };

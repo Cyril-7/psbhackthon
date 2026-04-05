@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target } from 'lucide-react';
+import { Target, X, Trash2, Clock, Shield } from 'lucide-react';
 import { MOCK_PHYSICAL_ASSETS } from '../../data/wealthTwinData';
 import { containerVars, itemVars, fmt, fmtShort } from './TwinUtils';
 import type { PhysicalAsset } from '../../data/wealthTwinData';
@@ -17,31 +17,44 @@ const categoryIcon: Record<string, string> = {
   property: '🏠', land: '🌾', gold: '💛', vehicle: '🚗', business: '⚙️', collectible: '⌚',
 };
 
-const AssetDetailSheet: React.FC<{ asset: PhysicalAsset; onClose: () => void }> = ({ asset, onClose }) => {
+const AssetDetailSheet: React.FC<{ asset: PhysicalAsset; onClose: () => void; onDelete: (id: string) => void }> = ({ asset, onClose, onDelete }) => {
   const gain = asset.currentValue - asset.purchaseValue;
   const gainPct = ((gain / asset.purchaseValue) * 100).toFixed(1);
 
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end"
+      className="absolute inset-0 bg-black/60 backdrop-blur-md z-[150] flex items-end"
       onClick={onClose}
     >
       <motion.div
-        initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="w-full bg-white rounded-t-[32px] p-6 space-y-5"
+        initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        className="w-full bg-[#fcfbf9] rounded-t-[40px] p-8 pb-12 space-y-6 border-t border-[#e6e4d9] shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto" />
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-3xl border border-slate-100 grayscale">
-            {categoryIcon[asset.category] || '📦'}
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-3xl border border-slate-100 grayscale">
+              {categoryIcon[asset.category] || '📦'}
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-800 leading-tight">{asset.name}</h3>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 capitalize">{asset.category} • {asset.ownershipType}</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-xl font-black text-slate-800 leading-tight">{asset.name}</h3>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 capitalize">{asset.category} • {asset.ownershipType}</p>
-          </div>
+          <button 
+            onClick={() => {
+              if (confirm('Are you sure you want to de-register this asset? This action is permanent.')) {
+                onDelete(asset.id);
+                onClose();
+              }
+            }}
+            className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -72,7 +85,7 @@ const AssetDetailSheet: React.FC<{ asset: PhysicalAsset; onClose: () => void }> 
           ))}
         </div>
 
-        <button onClick={onClose} className="w-full bg-slate-950 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs">
+        <button onClick={onClose} className="w-full bg-[#1b3a57] text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg">
           Close Registry
         </button>
       </motion.div>
@@ -80,24 +93,175 @@ const AssetDetailSheet: React.FC<{ asset: PhysicalAsset; onClose: () => void }> 
   );
 };
 
-const AssetVaultPanel: React.FC = () => {
-  const [selected, setSelected] = useState<PhysicalAsset | null>(null);
+const RegisterAssetSheet: React.FC<{ onAdd: (asset: any) => void; onClose: () => void }> = ({ onAdd, onClose }) => {
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [valuation, setValuation] = useState('5000000');
+  const [category, setCategory] = useState<any>(null);
 
-  const totalValue = MOCK_PHYSICAL_ASSETS.reduce((s, a) => s + a.currentValue, 0);
-  const totalCost = MOCK_PHYSICAL_ASSETS.reduce((s, a) => s + a.purchaseValue, 0);
-  const totalLinkedDebt = MOCK_PHYSICAL_ASSETS.reduce((s, a) => s + (a.linkedLoan || 0), 0);
+  const formatIndianNumber = (num: string) => {
+    const value = num.replace(/,/g, '');
+    if (isNaN(Number(value)) || value === '') return num;
+    return Number(value).toLocaleString('en-IN');
+  };
+
+  const handleRegister = () => {
+    setLoading(true);
+    setTimeout(() => {
+      const newAsset = {
+        id: `p${Date.now()}`,
+        name: `Registered ${category.name} Node`,
+        category: category.name.toLowerCase() as any,
+        icon: category.icon,
+        currentValue: Number(valuation),
+        purchaseValue: Number(valuation) * 0.9,
+        appreciationRate: 7.5,
+        liquidityScore: 'Medium' as any,
+        ownershipType: 'Sole Owner' as any,
+        resaleConfidence: 85,
+        riskDependency: 'Low' as any,
+      };
+      onAdd(newAsset);
+      setLoading(false);
+      onClose();
+    }, 2000);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="absolute inset-0 bg-black/60 backdrop-blur-md z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        className="w-full max-w-[430px] bg-[#fcfbf9] rounded-t-[40px] sm:rounded-[48px] p-8 space-y-6 relative border border-[#e6e4d9] shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="w-12 h-1.5 bg-[#e6e4d9] rounded-full mx-auto sm:hidden mb-2" />
+        
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+            <h3 className="text-2xl font-black text-[#1b3a57] tracking-tight uppercase">Asset Registry</h3>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[.2em]">Institutional Wealth Tokenization</p>
+          </div>
+          <button onClick={onClose} className="p-2 bg-white border border-[#e6e4d9] rounded-xl text-slate-400 hover:text-slate-900 transition-all">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {step === 1 ? (
+          <div className="space-y-6 py-4">
+            <p className="text-[11px] font-black uppercase tracking-widest text-[#1b3a57] opacity-60">Select Asset Category</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { name: 'Property', icon: '🏠' },
+                { name: 'Gold', icon: '💛' },
+                { name: 'Business', icon: '⚙️' },
+                { name: 'Land', icon: '🌾' },
+                { name: 'Vehicle', icon: '🚗' },
+                { name: 'Collectibles', icon: '⌚' }
+              ].map(cat => (
+                <button 
+                  key={cat.name}
+                  onClick={() => { setCategory(cat); setStep(2); }}
+                  className="bg-white border border-[#e6e4d9] p-5 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all hover:border-[#1b3a57] hover:bg-slate-50 group"
+                >
+                  <span className="text-3xl grayscale group-hover:grayscale-0 transition-all">{cat.icon}</span>
+                  <span className="text-[10px] font-black uppercase text-[#1b3a57]">{cat.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-8 py-6">
+            <div className="space-y-4">
+              <div className="bg-white border border-[#e6e4d9] rounded-3xl p-5 space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block px-1">Asset Valuation (₹)</label>
+                  <input 
+                    type="text" 
+                    value={formatIndianNumber(valuation)}
+                    onChange={(e) => setValuation(e.target.value.replace(/,/g, ''))}
+                    placeholder="₹50,0,000" 
+                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-lg font-black text-[#1b3a57] placeholder:text-slate-300 outline-none" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block px-1">Registry/ID Document</label>
+                  <div className="w-full border-2 border-dashed border-slate-100 rounded-2xl p-6 flex flex-col items-center gap-2 text-slate-400 hover:text-[#1b3a57] hover:border-[#1b3a57] cursor-pointer transition-all">
+                    <span className="text-[10px] font-black uppercase tracking-widest">Upload Sales Deed / Certificate</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button 
+              onClick={handleRegister}
+              disabled={loading}
+              className="w-full bg-[#1b3a57] text-[#0cd89a] py-5 rounded-3xl font-black uppercase tracking-[.3em] text-[11px] flex items-center justify-center gap-3 relative overflow-hidden group shadow-xl"
+            >
+              <AnimatePresence>
+                {loading && (
+                  <motion.div 
+                    initial={{ x: "-100%" }} animate={{ x: "100%" }} 
+                    transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                    className="absolute inset-0 bg-white/10" 
+                  />
+                )}
+              </AnimatePresence>
+              {loading ? 'Tokenizing Asset...' : 'Deploy to Wealth Vault'}
+            </button>
+            <button onClick={() => setStep(1)} className="text-center w-full text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">
+              Go back
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center justify-center gap-2 opacity-40 py-2">
+          <Shield className="w-3 h-3" />
+          <span className="text-[8px] font-black uppercase tracking-[.4em]">ISO 27001 SECURED VAULT</span>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const AssetVaultPanel: React.FC = () => {
+  const [assets, setAssets] = useState<PhysicalAsset[]>(() => {
+    const saved = localStorage.getItem('securewealth_assets');
+    return saved ? JSON.parse(saved) : MOCK_PHYSICAL_ASSETS;
+  });
+  const [selected, setSelected] = useState<PhysicalAsset | null>(null);
+  const [showAddAsset, setShowAddAsset] = useState(false);
+
+  const addAsset = (newAsset: PhysicalAsset) => {
+    const updated = [newAsset, ...assets];
+    setAssets(updated);
+    localStorage.setItem('securewealth_assets', JSON.stringify(updated));
+  };
+
+  const deleteAsset = (id: string) => {
+    const updated = assets.filter(a => a.id !== id);
+    setAssets(updated);
+    localStorage.setItem('securewealth_assets', JSON.stringify(updated));
+  };
+
+  const totalValue = assets.reduce((s, a) => s + a.currentValue, 0);
+  const totalCost = assets.reduce((s, a) => s + a.purchaseValue, 0);
+  const totalLinkedDebt = assets.reduce((s, a) => s + (a.linkedLoan || 0), 0);
   const totalGain = totalValue - totalCost;
 
   return (
     <motion.div variants={containerVars} initial="hidden" animate="show" className="space-y-8">
-
       {/* ── Vault Summary ── */}
       <motion.div variants={itemVars}>
         <div className="bg-[#fcfbf9] rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 relative overflow-hidden border border-[#e6e4d9] shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-1.5 h-1.5 rounded-full bg-[#1b3a57] shadow-[0_0_8px_rgba(27,58,87,0.3)]" />
-              <p className="text-[9px] font-black uppercase tracking-widest text-[#5c6065]">Secure Asset Registry • {MOCK_PHYSICAL_ASSETS.length} Nodes</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-[#5c6065]">Secure Asset Registry • {assets.length} Nodes</p>
             </div>
             
             <p className="text-[#5c6065] text-[10px] font-black uppercase tracking-widest mb-1 opacity-80">Consolidated Vault Valuation</p>
@@ -123,16 +287,15 @@ const AssetVaultPanel: React.FC = () => {
 
       {/* ── Asset Inventory ── */}
       <motion.div variants={itemVars}>
-        {/* Using standard SectionHeader for consistency */}
         <div className="flex items-center gap-4 mb-6">
           <div className="w-[46px] h-[46px] rounded-[18px] bg-[#1b3a57] border border-[#2b4c6a] flex items-center justify-center shrink-0 shadow-lg">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0cd89a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            <Target className="w-5 h-5 text-[#0cd89a]" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <h2 className="font-black text-[#1b3a57] text-[17px] tracking-tight uppercase leading-none mt-0.5">Asset Inventory</h2>
               <span className="text-[10px] font-black uppercase tracking-widest text-[#1f8c5c] leading-none ml-2">
-                {MOCK_PHYSICAL_ASSETS.length} Verified
+                {assets.length} Verified
               </span>
             </div>
             <p className="text-[#8a9bb0] text-[10px] font-black uppercase tracking-widest leading-none">Market-Linked Tangible Holdings</p>
@@ -140,7 +303,7 @@ const AssetVaultPanel: React.FC = () => {
         </div>
         
         <div className="grid grid-cols-1 gap-4 xl:gap-5">
-          {MOCK_PHYSICAL_ASSETS.map((asset, i) => {
+          {assets.map((asset, i) => {
             const gain = asset.currentValue - asset.purchaseValue;
             const isPositive = gain >= 0;
             const equity = asset.currentValue - (asset.linkedLoan || 0);
@@ -201,14 +364,24 @@ const AssetVaultPanel: React.FC = () => {
 
       {/* ── Add Asset Prompt ── */}
       <motion.div variants={itemVars}>
-        <button className="w-full border-2 border-dashed border-slate-100 rounded-2xl p-5 flex items-center justify-center gap-3 text-slate-400 hover:border-blue-300 hover:text-blue-600 transition-all group">
-          <Target className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          <span className="text-[10px] font-black uppercase tracking-widest">Register New Asset</span>
+        <button 
+          onClick={() => setShowAddAsset(true)}
+          className="w-full border-2 border-dashed border-[#1b3a57]/20 rounded-3xl p-6 flex flex-col items-center justify-center gap-3 text-[#1b3a57] hover:border-[#1b3a57] hover:bg-slate-50 transition-all group shadow-sm"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-white border border-[#e6e4d9] flex items-center justify-center group-hover:bg-[#1b3a57] group-hover:text-[#0cd89a] transition-all shadow-sm">
+            <Target className="w-6 h-6 group-hover:scale-110 transition-transform" />
+          </div>
+          <span className="text-[11px] font-black uppercase tracking-[.3em] mt-1">Register New Asset</span>
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Connect Real Estate, Gold, or Tangibles</p>
         </button>
       </motion.div>
 
       <AnimatePresence>
-        {selected && <AssetDetailSheet asset={selected} onClose={() => setSelected(null)} />}
+        {selected && <AssetDetailSheet asset={selected} onClose={() => setSelected(null)} onDelete={deleteAsset} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showAddAsset && <RegisterAssetSheet onAdd={addAsset} onClose={() => setShowAddAsset(false)} />}
       </AnimatePresence>
     </motion.div>
   );

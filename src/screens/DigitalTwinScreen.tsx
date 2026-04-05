@@ -2,7 +2,7 @@ import React, { useState, useCallback, memo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Brain, RefreshCw, Target,
-  Shield, ShieldAlert, MessageSquare,
+  MessageSquare,
 } from 'lucide-react';
 import type { ProfileData } from '../types/profile';
 import { NET_WORTH_METRICS, TWIN_OVERVIEW } from '../data/wealthTwinData';
@@ -14,8 +14,7 @@ import WealthOverviewPanel from './twin/WealthOverviewPanel';
 import AssetVaultPanel from './twin/AssetVaultPanel';
 import AIIntelligencePanel from './twin/AIIntelligencePanel';
 import GoalLatticePanel from './twin/GoalLatticePanel';
-import RiskSentinelPanel from './twin/RiskSentinelPanel';
-import FraudShieldPanel from './twin/FraudShieldPanel';
+
 import NeuralChatPanel from './twin/NeuralChatPanel';
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -90,20 +89,7 @@ const DigitalTwinScreen: React.FC<{ profile: ProfileData }> = ({ profile }) => {
           <GoalLatticePanel />
         </div>
 
-        <div className="pt-2 border-t border-slate-200">
-          <SectionHeader icon={Shield} title="Risk Sentinel" subtitle="Multi-vector exposure analysis" />
-          <RiskSentinelPanel />
-        </div>
 
-        <div className="pt-2 border-t border-slate-200">
-          <SectionHeader 
-            icon={ShieldAlert} 
-            title="Wealth Protection" 
-            subtitle="Real-time Institutional Defense" 
-            badge="ACTIVE" 
-          />
-          <FraudShieldPanel />
-        </div>
 
         <div className="pt-2 border-t border-slate-200 h-[650px] flex flex-col">
           <SectionHeader icon={MessageSquare} title="Neural Chat" subtitle="Direct link to Twin Consciousness" />
