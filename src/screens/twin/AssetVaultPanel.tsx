@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, X, Trash2, Clock, Shield } from 'lucide-react';
+import { Target, X, Trash2, Shield } from 'lucide-react';
 import { MOCK_PHYSICAL_ASSETS } from '../../data/wealthTwinData';
 import { containerVars, itemVars, fmt, fmtShort } from './TwinUtils';
 import type { PhysicalAsset } from '../../data/wealthTwinData';
