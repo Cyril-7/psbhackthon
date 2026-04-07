@@ -291,11 +291,11 @@ export interface StrategyRecommendation {
 }
 
 export const buildRecommendations = (
-  snapshot: MarketSnapshot,
+  _snapshot: MarketSnapshot,
   signals: MarketSignal[],
   portfolioMix: { equity: number; debt: number; gold: number; fd: number; cash: number },
   riskProfile: 'conservative' | 'moderate' | 'aggressive',
-  goalTimeline: 'short' | 'medium' | 'long'
+  _goalTimeline: 'short' | 'medium' | 'long'
 ): StrategyRecommendation[] => {
   const recs: StrategyRecommendation[] = [];
 
