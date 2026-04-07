@@ -163,6 +163,7 @@ const WealthOverviewPanel: React.FC<Props> = ({ aiInsight }) => {
     return saved ? JSON.parse(saved) : MOCK_LINKED_ACCOUNTS;
   });
   const [showAddAccount, setShowAddAccount] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<typeof MOCK_LINKED_ACCOUNTS[0] | null>(null);
 
   const deleteAccount = (id: string) => {
     const newAccounts = accounts.filter(acc => acc.id !== id);
@@ -366,9 +367,10 @@ const WealthOverviewPanel: React.FC<Props> = ({ aiInsight }) => {
                   animate={{ x: 0 }}
                   whileHover={{ cursor: 'grab' }}
                   whileTap={{ cursor: 'grabbing' }}
-                  className="bg-[#fdfcf9] border border-[#e6e4d9] rounded-[24px] p-4 flex items-center gap-4 shadow-[0_2px_12px_rgba(0,0,0,0.02)] relative z-10"
+                  className="bg-[#fdfcf9] border border-[#e6e4d9] rounded-[24px] p-4 flex items-center gap-4 shadow-[0_2px_12px_rgba(0,0,0,0.02)] relative z-10 hover:border-[#1b3a57] transition-all"
+                  onClick={() => setSelectedAccount(acc)}
                 >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg grayscale opacity-60 bg-slate-50 border border-slate-100">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg grayscale opacity-60 bg-slate-50 border border-slate-100 shrink-0">
                     {acc.icon}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -415,7 +417,115 @@ const WealthOverviewPanel: React.FC<Props> = ({ aiInsight }) => {
 
       <AnimatePresence>
         {showAddAccount && <AddAccountSheet onClose={() => setShowAddAccount(false)} />}
+        {selectedAccount && <AccountDetailsModal account={selectedAccount} onClose={() => setSelectedAccount(null)} />}
       </AnimatePresence>
+    </motion.div>
+  );
+};
+
+// ── Account Details Modal ──
+const AccountDetailsModal: React.FC<{ 
+  account: typeof MOCK_LINKED_ACCOUNTS[0]; 
+  onClose: () => void 
+}> = ({ account, onClose }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        className="w-full max-w-[430px] bg-[#fcfbf9] rounded-t-[32px] sm:rounded-[40px] p-0 space-y-0 relative border border-[#e6e4d9] shadow-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-8 pb-4 space-y-6">
+          <div className="w-12 h-1.5 bg-[#e6e4d9] rounded-full mx-auto sm:hidden mb-2" />
+          
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-white border border-[#e6e4d9] flex items-center justify-center text-2xl shadow-sm">
+                {account.icon}
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-xl font-black text-[#1b3a57] tracking-tight">{account.institution}</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[.2em]">{account.accountType}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 bg-white border border-[#e6e4d9] rounded-xl text-slate-400 hover:text-slate-900 transition-all">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="bg-white border border-[#e6e4d9] rounded-[24px] p-6 text-center space-y-1 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-3 opacity-10">
+              <Shield className="w-12 h-12 text-[#1b3a57]" />
+            </div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Available Balance</p>
+            <h2 className="text-[32px] font-black text-[#1b3a57] tracking-tighter">
+              <span className="text-2xl mr-1">₹</span>{fmt(Math.abs(account.balance))}
+            </h2>
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${account.balance >= 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                {account.balance >= 0 ? 'ASSET' : 'LIABILITY'}
+              </span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{account.accountNumber}</span>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Performance Insights</h4>
+              {account.growth !== undefined && (
+                <span className={`text-[11px] font-black ${account.growth >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {account.growth >= 0 ? '+' : ''}{account.growth}% (30D)
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-50 border border-[#e6e4d9]/50 rounded-2xl p-4">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Interest Rate</p>
+                <p className="text-sm font-black text-[#1b3a57]">{account.interestRate || 'N/A'}% p.a.</p>
+              </div>
+              <div className="bg-slate-50 border border-[#e6e4d9]/50 rounded-2xl p-4">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Last Sync</p>
+                <p className="text-sm font-black text-[#1b3a57]">{account.lastSync}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Recent Activity</h4>
+            <div className="space-y-3">
+              {[
+                { label: 'UPI - Amazon Pay', val: -1240, date: 'Today' },
+                { label: 'Salary Credit', val: 85000, date: '2 days ago' },
+                { label: 'ATM Withdrawal', val: -5000, date: '4 days ago' },
+              ].map((tx, i) => (
+                <div key={i} className="flex justify-between items-center py-2 border-b border-[#f5f4f0] last:border-0">
+                  <div>
+                    <p className="text-[12px] font-black text-[#1b3a57]">{tx.label}</p>
+                    <p className="text-[9px] font-medium text-slate-400">{tx.date}</p>
+                  </div>
+                  <p className={`text-xs font-black ${tx.val > 0 ? 'text-emerald-600' : 'text-slate-900'}`}>
+                    {tx.val > 0 ? '+' : ''}₹{Math.abs(tx.val).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 bg-[#f5f4f0]/50 border-t border-[#e6e4d9] flex gap-3">
+          <button className="flex-1 bg-white border border-[#e6e4d9] text-[#1b3a57] py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-sm hover:bg-[#f5f7f9] transition-all">
+            Full Statement
+          </button>
+          <button className="flex-1 bg-[#1b3a57] text-[#0cd89a] py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-blue-900/10 active:scale-[0.98] transition-all">
+            Secure Transfer
+          </button>
+        </div>
+      </motion.div>
     </motion.div>
   );
 };
