@@ -3,12 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 import {
-  MOCK_LINKED_ACCOUNTS, MOCK_AI_INTERVENTIONS, NET_WORTH_METRICS,
+  MOCK_LINKED_ACCOUNTS, NET_WORTH_METRICS,
   UNIFIED_FINANCIAL_IDENTITY,
 } from '../data/wealthTwinData';
 import {
-  TrendingUp, Search, ChevronRight, ShieldCheck, Zap,
-  BarChart3, ArrowUpRight, ArrowRight, Sparkles, Target, XCircle,
+  TrendingUp, Search, ChevronRight, ShieldCheck,
+  BarChart3, ArrowUpRight, Sparkles, Target, XCircle,
   Lock, Plus, Check,
 } from 'lucide-react';
 import type { ProfileData } from '../types/profile';
@@ -346,9 +346,9 @@ const InvestScreen: React.FC<{ profile: ProfileData }> = ({ profile }) => {
     + customHoldings.reduce((sum, h) => sum + (h.balance || 0), 0);
 
   return (
-    <div className="flex-1 flex flex-col bg-[#f5f4ef] min-h-screen text-[#1b3a57] overflow-y-auto pb-32 font-sans no-scrollbar">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#f5f4ef]/90 backdrop-blur-xl border-b border-[#e6e4d9] px-6 py-5 flex justify-between items-center">
+    <div className="flex-1 flex flex-col min-h-screen text-[#1b3a57] font-sans">
+      {/* Header - Mobile Only */}
+      <header className="md:hidden sticky top-0 z-50 bg-[#f5f4ef]/90 backdrop-blur-xl border-b border-[#e6e4d9] px-6 py-5 flex justify-between items-center">
         <div className="flex items-center gap-3">
           <div className="w-[46px] h-[46px] rounded-[18px] bg-[#0e212b] border border-[#1b3a5a] flex items-center justify-center text-[#0cd89a] shrink-0 shadow-lg">
             <Target className="w-5 h-5" />
@@ -365,172 +365,170 @@ const InvestScreen: React.FC<{ profile: ProfileData }> = ({ profile }) => {
         </div>
       </header>
 
-      <div className="px-5 py-6">
-        <motion.div variants={containerVars} initial="hidden" animate="show" className="space-y-6">
+      <div className="px-5 md:px-0 py-6 md:py-0">
+        <motion.div variants={containerVars} initial="hidden" animate="show" className="space-y-8">
 
-          {/* ── Portfolio Hero ── */}
-          <motion.div variants={itemVars}>
-            <div className="bg-[#fdfcf9] rounded-[24px] p-6 border border-[#e6e4d9] shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
-              <div className="w-full md:w-2/5 h-52 relative z-10">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={investAllocation} cx="50%" cy="50%" innerRadius={65} outerRadius={88} paddingAngle={5} dataKey="value" stroke="none">
-                      {investAllocation.map((e, i) => <Cell key={i} fill={e.color} />)}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{ background: '#0e212b', border: 'none', borderRadius: 12, color: '#fff', fontSize: 10, padding: '8px 12px' }}
-                      formatter={(val: any) => [`₹${twinFmtShort(val)}`, '']}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-[#8a9bb0]">Total AUM</p>
-                  <h3 className="text-2xl font-black text-[#1b3a57]">₹{twinFmtShort(totalInvestments)}</h3>
-                  <span className="text-[9px] font-black text-[#1f8c5c] flex items-center gap-1 uppercase tracking-widest">
-                    <ArrowUpRight className="w-3 h-3" />+{NET_WORTH_METRICS.annualCAGR}% CAGR
-                  </span>
-                </div>
-              </div>
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* Left Column - Portfolio & Market */}
+            <div className="lg:col-span-12 xl:col-span-8 space-y-8">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* ── Portfolio Hero ── */}
+                <motion.div variants={itemVars} className="md:col-span-2 lg:col-span-2">
+                  <div className="bg-[#fdfcf9] rounded-[32px] p-8 border border-[#e6e4d9] shadow-sm flex flex-col md:flex-row items-center gap-10 relative overflow-hidden">
+                    <div className="w-full md:w-[350px] h-[300px] relative z-10">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={investAllocation} cx="50%" cy="50%" innerRadius={85} outerRadius={115} paddingAngle={6} dataKey="value" stroke="none">
+                            {investAllocation.map((e, i) => <Cell key={i} fill={e.color} />)}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{ background: '#0e212b', border: 'none', borderRadius: 16, color: '#fff', fontSize: 12, padding: '12px 16px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}
+                            formatter={(val: any) => [`₹${fmtShort(val)}`, 'Allocation']}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <p className="text-[10px] font-black uppercase tracking-[.2em] text-[#8a9bb0] mb-1">Total AUM</p>
+                        <h3 className="text-[32px] font-black text-[#1b3a57] leading-none mb-1">₹{twinFmtShort(totalInvestments)}</h3>
+                        <div className="bg-[#d2efe2] px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-[#bce3d1]">
+                          <ArrowUpRight className="w-3.5 h-3.5 text-[#1f8c5c]" />
+                          <span className="text-[9px] font-black text-[#1f8c5c] uppercase tracking-widest">+{NET_WORTH_METRICS.annualCAGR}%</span>
+                        </div>
+                      </div>
+                    </div>
 
-              <div className="w-full md:w-3/5 space-y-3 relative z-10">
-                <div className="flex items-center gap-2 mb-3 bg-[#d2efe2] border border-[#bce3d1] w-fit px-3 py-1.5 rounded-full">
-                  <TrendingUp className="w-3.5 h-3.5 text-[#1f8c5c]" />
-                  <span className="text-[9px] font-black text-[#1f8c5c] uppercase tracking-widest">Portfolio Health: Optimal</span>
-                </div>
-                {investAllocation.map(asset => (
-                  <div key={asset.name} className="space-y-1">
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                      <span className="text-[#8a9bb0] flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full" style={{ background: asset.color }} /> {asset.name}
-                      </span>
-                      <span className="text-[#1b3a57] font-black">₹{twinFmtShort(asset.value)}</span>
+                    <div className="flex-1 w-full space-y-5 relative z-10">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-black text-[#1b3a57] uppercase tracking-wider">Asset Distribution</p>
+                        <div className="flex items-center gap-2 text-[#1f8c5c]">
+                          <TrendingUp className="w-4 h-4" />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Optimal Health</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                        {investAllocation.map(asset => (
+                          <div key={asset.name} className="space-y-2">
+                            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                              <span className="text-[#8a9bb0] flex items-center gap-2">
+                                <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ background: asset.color }} /> {asset.name}
+                              </span>
+                              <span className="text-[#1b3a57] font-black">₹{twinFmtShort(asset.value)}</span>
+                            </div>
+                            <div className="h-[8px] bg-[#f5f4f0] rounded-full overflow-hidden border border-slate-100/50">
+                              <motion.div initial={{ width: 0 }} animate={{ width: `${asset.pct}%` }}
+                                transition={{ duration: 1.5, ease: 'circOut' }}
+                                className="h-full rounded-full shadow-inner" style={{ background: asset.color }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="h-[6px] bg-[#e3e6ea] rounded-full overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${asset.pct}%` }}
-                        transition={{ duration: 1.5, ease: 'circOut' }}
-                        className="h-full rounded-full" style={{ background: asset.color }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-
-          {/* ── MARKET STRATEGY ENGINE ── */}
-          <motion.div variants={itemVars}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-5 h-5 rounded-lg bg-[#0e212b] flex items-center justify-center">
-                <BarChart3 className="w-3 h-3 text-[#0cd89a]" />
-              </div>
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide">Market-Aware Strategy Engine</h3>
-              <span className="text-[8px] font-black text-[#1f8c5c] bg-[#d2efe2] border border-[#bce3d1] px-2 py-0.5 rounded-full uppercase tracking-widest">AI LIVE</span>
-            </div>
-            <MarketRecommendationEngine profile={profile} />
-          </motion.div>
-
-          {/* ── Investment Holdings ── */}
-          <motion.div variants={itemVars}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-indigo-500" />
-                <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide">Investment Holdings</h3>
-              </div>
-              <span className="text-[9px] font-bold text-slate-400">{allInvestAccounts.length} Accounts</span>
-            </div>
-            <div className="space-y-2">
-              {allInvestAccounts.map(acc => (
-                <motion.div key={acc.id} whileHover={{ x: 2 }}
-                  onClick={() => setActiveAccount(acc)}
-                  className="bg-white border border-slate-100 p-4 rounded-2xl flex items-center justify-between group cursor-pointer hover:shadow-sm transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg shrink-0"
-                      style={{ background: acc.color + '15', border: `1px solid ${acc.color}25` }}>
-                      {acc.icon}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{acc.institution}</p>
-                      <p className="text-[9px] font-medium text-slate-400">{acc.accountType} • {acc.accountNumber}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="text-sm font-black text-slate-800">₹{fmtShort(acc.balance)}</p>
-                      {acc.growth !== undefined && (
-                        <p className={`text-[9px] font-bold ${acc.growth >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                          {acc.growth >= 0 ? '+' : ''}{acc.growth}% p.a.
-                        </p>
-                      )}
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
                   </div>
                 </motion.div>
-              ))}
-            </div>
-            
-            {/* Add Investment Button */}
-            <button
-              onClick={() => setShowAddSheet(true)}
-              className="w-full mt-3 py-3.5 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 font-bold text-xs flex items-center justify-center gap-2 hover:border-indigo-300 hover:text-indigo-500 hover:bg-indigo-50/30 transition-all active:scale-[0.98]"
-            >
-              <Plus className="w-4 h-4" />
-              Add Investment Holding
-            </button>
-          </motion.div>
+              </div>
 
-          {/* ── AI Strategy Card ── */}
-          <motion.div variants={itemVars}>
-            <div className="bg-slate-900 rounded-[24px] p-6 text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-6 opacity-[0.03] pointer-events-none">
-                <BarChart3 className="w-32 h-32" />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full w-fit mb-4">
-                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                  <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">Rebalance Intelligence</span>
-                </div>
-                <h4 className="text-lg font-black tracking-tight mb-2">Gold Overexposure — Rebalance ₹2.8L</h4>
-                <p className="text-slate-400 text-xs font-medium leading-relaxed mb-5">
-                  Combined gold (physical + digital) is at <span className="text-amber-400 font-bold">7.4%</span> of net worth vs recommended 5%. 
-                  Shifting ₹2.8L to equity mutual funds would improve your diversification score by <span className="text-emerald-400 font-bold">+12 points</span>.
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <button className="bg-emerald-500 hover:bg-emerald-400 text-slate-900 px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all">
-                    Execute Rebalance
-                  </button>
-                  <button className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all">
-                    View Analysis
-                  </button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* ── Top Interventions ── */}
-          <motion.div variants={itemVars}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-500" />
-                <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide">Investment Opportunities</h3>
-              </div>
-            </div>
-            <div className="space-y-3">
-              {MOCK_AI_INTERVENTIONS.filter(i => ['cash', 'gold', 'investment', 'tax'].includes(i.category)).slice(0, 3).map(int => (
-                <div key={int.id} className="bg-white border border-slate-100 rounded-2xl p-4 flex items-start gap-3 hover:shadow-sm transition-all">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-slate-50 border border-slate-100 shrink-0">{int.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-black text-slate-800 leading-tight mb-1">{int.title}</h4>
-                    <p className="text-[10px] text-slate-400 font-medium line-clamp-2">{int.description}</p>
+              {/* ── MARKET STRATEGY ENGINE ── */}
+              <motion.div variants={itemVars}>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-[#0e212b] flex items-center justify-center shadow-lg">
+                      <BarChart3 className="w-4 h-4 text-[#0cd89a]" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">Market-Aware Strategy Engine</h3>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Global Asset Correlation Analysis</p>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className={`text-[10px] font-black ${int.impactPositive ? 'text-emerald-500' : 'text-red-400'}`}>{int.impact}</span>
-                    <button className="text-[8px] font-black uppercase text-indigo-500 flex items-center gap-1">
-                      {int.actionLabel} <ArrowRight className="w-3 h-3" />
+                  <div className="flex items-center gap-2 bg-[#d2efe2] border border-[#bce3d1] px-3 py-1.5 rounded-full">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#1f8c5c] animate-pulse" />
+                    <span className="text-[9px] font-black text-[#1f8c5c] uppercase tracking-widest">Neural Live</span>
+                  </div>
+                </div>
+                <MarketRecommendationEngine profile={profile} />
+              </motion.div>
+            </div>
+
+            {/* Right Column - Holdings & Intel */}
+            <div className="lg:col-span-12 xl:col-span-4 space-y-8">
+              
+              {/* ── Investment Holdings ── */}
+              <motion.div variants={itemVars}>
+                <div className="bg-[#fdfcf9] border border-[#e6e4d9] rounded-[32px] p-8 shadow-sm">
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">Investment Nodes</h3>
+                      <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{allInvestAccounts.length} Verified Institutions</p>
+                    </div>
+                    <button onClick={() => setShowAddSheet(true)} className="w-9 h-9 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">
+                      <Plus className="w-5 h-5" />
                     </button>
                   </div>
+                  
+                  <div className="space-y-3">
+                    {allInvestAccounts.map(acc => (
+                      <motion.div key={acc.id} whileHover={{ x: 4, backgroundColor: '#fff' }}
+                        onClick={() => setActiveAccount(acc)}
+                        className="bg-[#f5f4f0]/30 border border-[#e6e4d9]/50 p-4 rounded-2xl flex items-center justify-between group cursor-pointer transition-all">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-white border border-[#e6e4d9] flex items-center justify-center text-xl shadow-sm transition-transform group-hover:scale-105">
+                            {acc.icon}
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-[#1b3a57] group-hover:text-blue-600 transition-colors uppercase tracking-tight">{acc.institution}</p>
+                            <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">{acc.accountType}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-black text-[#1b3a57]">₹{fmtShort(acc.balance)}</p>
+                          <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest mt-1">Synced</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setShowAddSheet(true)}
+                    className="w-full mt-6 py-4 rounded-2xl border-2 border-dashed border-[#e6e4d9] text-[#8a9bb0] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50 transition-all active:scale-[0.98]"
+                  >
+                    Add Portfolio Alpha Node
+                  </button>
                 </div>
-              ))}
+              </motion.div>
+
+              {/* ── AI Strategy Card ── */}
+              <motion.div variants={itemVars}>
+                <div className="bg-[#0e212b] rounded-[32px] p-8 text-white relative overflow-hidden shadow-2xl">
+                  <div className="absolute top-0 right-0 p-8 opacity-[0.05] text-[#0cd89a]">
+                    <Sparkles className="w-32 h-32" />
+                  </div>
+                  <div className="relative z-10 space-y-6">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full w-fit">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#0cd89a]" />
+                      <span className="text-[9px] font-black uppercase tracking-widest text-[#0cd89a]">Dynamic Rebalance</span>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-xl font-black tracking-tight leading-tight">Gold Alpha Strategy</h4>
+                      <p className="text-slate-400 text-xs font-medium leading-relaxed">
+                        Excess gold exposure detected (<span className="text-amber-400 font-bold">7.4%</span>). 
+                        Rebalancing <span className="text-white font-bold">₹2.8L</span> into mid-cap equity could yield +2.1% Alpha.
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <button className="w-full bg-[#0cd89a] text-[#0e212b] py-3.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg hover:shadow-[#0cd89a]/20">
+                        Execute Optimization
+                      </button>
+                      <button className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white py-3.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all">
+                        Full Simulation
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             </div>
-          </motion.div>
+          </div>
         </motion.div>
       </div>
 

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import {
   fetchFullMarketSnapshot, deriveMarketSignals, buildRecommendations,
-  fetchPortfolioNews, fetchStockData,
+  fetchPortfolioNews, fetchStockData, fetchIndices,
   type MarketSnapshot, type MarketSignal, type StrategyRecommendation,
 } from '../../services/marketService';
 import { getGeminiResponse } from '../../services/gemini';
@@ -104,7 +104,7 @@ const MarketStatusStrip: React.FC<{ signals: MarketSignal[] }> = ({ signals }) =
         <div className="flex items-center gap-2">
           {getTrendIcon(equitySignal?.trend || 'neutral')}
           <div className="min-w-0">
-            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Nifty 50</p>
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">NIFTY 50</p>
             <p className={`text-[11px] font-black leading-tight ${getTrendColor(equitySignal?.trend || 'neutral')}`}>
               {equitySignal?.value?.replace('Nifty Sentiment: ', '') || 'Stable'}
             </p>
@@ -130,23 +130,46 @@ const StockRow: React.FC<{ data: any; name: string }> = ({ data, name }) => {
   const price = data?.currentPrice?.NSE || data?.currentPrice?.BSE || data?.price || '—';
   const change = parseFloat(data?.percentChange || data?.percent_change || '0');
   const isUp = change >= 0;
+  const high = data?.high || data?.dayHigh || '—';
+  const low = data?.low || data?.dayLow || '—';
+  const volume = data?.volume || '—';
+
   return (
-    <div className="bg-white border border-slate-100 rounded-xl px-3.5 py-3 flex items-center justify-between">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
-          {isUp ? <TrendingUp className="w-3.5 h-3.5 text-emerald-500" /> : <TrendingDown className="w-3.5 h-3.5 text-red-500" />}
+    <div className="bg-white border border-slate-100 rounded-xl px-3.5 py-3 transition-all hover:bg-slate-50/50">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+            {isUp ? <TrendingUp className="w-3.5 h-3.5 text-emerald-500" /> : <TrendingDown className="w-3.5 h-3.5 text-red-500" />}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold text-slate-800 truncate">{data?.companyName || data?.company_name || name}</p>
+            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{data?.tickerId || data?.ticker_id || 'NSE'}</p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="text-[11px] font-bold text-slate-800 truncate">{data?.companyName || data?.company_name || name}</p>
-          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{data?.tickerId || data?.ticker_id || 'NSE'}</p>
+        <div className="text-right shrink-0 pl-2">
+          <p className="text-[12px] font-black text-slate-900">₹{typeof price === 'number' ? price.toLocaleString('en-IN') : price}</p>
+          <p className={`text-[9px] font-black ${isUp ? 'text-emerald-500' : 'text-red-500'}`}>
+            {isUp ? '+' : ''}{change.toFixed(2)}%
+          </p>
         </div>
       </div>
-      <div className="text-right shrink-0 pl-2">
-        <p className="text-[12px] font-black text-slate-900">₹{typeof price === 'number' ? price.toLocaleString('en-IN') : price}</p>
-        <p className={`text-[9px] font-black ${isUp ? 'text-emerald-500' : 'text-red-500'}`}>
-          {isUp ? '+' : ''}{change.toFixed(2)}%
-        </p>
-      </div>
+      
+      {data && (
+        <div className="mt-2.5 pt-2.5 border-t border-slate-50 grid grid-cols-3 gap-2">
+          <div>
+            <p className="text-[7px] font-black uppercase tracking-widest text-[#8a9bb0]">High</p>
+            <p className="text-[9px] font-bold text-slate-500">₹{typeof high === 'number' ? high.toLocaleString('en-IN') : high}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-[7px] font-black uppercase tracking-widest text-[#8a9bb0]">Low</p>
+            <p className="text-[9px] font-bold text-slate-500">₹{typeof low === 'number' ? low.toLocaleString('en-IN') : low}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[7px] font-black uppercase tracking-widest text-[#8a9bb0]">Volume</p>
+            <p className="text-[9px] font-bold text-slate-500">{typeof volume === 'number' ? volume.toLocaleString('en-IN') : volume}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -296,12 +319,23 @@ const MarketRecommendationEngine: React.FC<Props> = ({ profile }) => {
 
   // Live stocks state
   const [stocksData, setStocksData] = useState<Record<string, any>>({});
+  const [indicesData, setIndicesData] = useState<any[]>([]);
   const [stocksLoading, setStocksLoading] = useState(false);
   const [stockSearch, setStockSearch] = useState('');
   const [searchResult, setSearchResult] = useState<any>(null);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [stockSubTab, setStockSubTab] = useState<'indian' | 'global'>('indian');
 
-  const INDEX_TICKERS = ['Nifty 50', 'Nifty Bank', 'Nifty IT', 'Nifty Midcap 50'];
+  const INDEX_TICKERS = [
+    'NIFTY 50',
+    'NIFTY Bank',
+    'Nifty Financial Services',
+    'Bse Sensex',
+    'Nifty Midcap Select',
+    'Bse Bankex',
+    'India Vix',
+    'Nifty Total Market'
+  ];
 
   const portfolioMix = { equity: 1250000 + 650000, debt: 500000 + 215000 + 380000, gold: 350000 + 560000, fd: 500000, cash: 185000 + 124000 + 8200 };
   const riskProfile = profile.riskPreference === 'high' ? 'aggressive' as const : 'moderate' as const;
@@ -334,15 +368,33 @@ const MarketRecommendationEngine: React.FC<Props> = ({ profile }) => {
     if (activeTab !== 'stocks') return;
     const loadStocks = async () => {
       setStocksLoading(true);
-      const results: Record<string, any> = {};
-      const allTickers = [...USER_HOLDINGS, ...INDEX_TICKERS];
-      const promises = allTickers.map(async name => {
-        const data = await fetchStockData(name);
-        if (data) results[name] = data;
-      });
-      await Promise.allSettled(promises);
-      setStocksData(results);
-      setStocksLoading(false);
+      try {
+        // 1. Fetch user holdings (Stocks)
+        const holdResults: Record<string, any> = {};
+        const holdPromises = USER_HOLDINGS.map(async name => {
+          const data = await fetchStockData(name);
+          if (data) holdResults[name] = data;
+        });
+
+        // 2. Fetch all indices (Popular + Sectoral)
+        const [popRes, secRes] = await Promise.allSettled([
+          fetchIndices('POPULAR'),
+          fetchIndices('SECTOR')
+        ]);
+
+        const allIndices = [
+          ...(popRes.status === 'fulfilled' && popRes.value ? popRes.value : []),
+          ...(secRes.status === 'fulfilled' && secRes.value ? secRes.value : [])
+        ];
+
+        await Promise.allSettled(holdPromises);
+        setStocksData(holdResults);
+        setIndicesData(allIndices);
+      } catch (err) {
+        console.error('Error loading stocks/indices:', err);
+      } finally {
+        setStocksLoading(false);
+      }
     };
     loadStocks();
   }, [activeTab]);
@@ -461,93 +513,126 @@ const MarketRecommendationEngine: React.FC<Props> = ({ profile }) => {
           {/* ── LIVE STOCKS ── */}
           {activeTab === 'stocks' && (
             <motion.div key="stocks" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-4">
-
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={stockSearch}
-                  onChange={e => setStockSearch(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSearchStock()}
-                  placeholder="Search any stock (e.g. Wipro, SBI)..."
-                  className="w-full bg-white border border-slate-100 rounded-2xl py-3 pl-10 pr-20 outline-none text-xs font-bold text-slate-700 shadow-sm focus:border-indigo-300 transition-all"
-                />
-                <button onClick={handleSearchStock} className="absolute right-2 top-1/2 -translate-y-1/2 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl hover:bg-slate-700 transition-all">
-                  Search
+              
+              {/* Sub-tabs for Indian/Global */}
+              <div className="flex border-b border-slate-100 mb-2">
+                <button 
+                  onClick={() => setStockSubTab('indian')}
+                  className={`pb-2 px-4 text-[10px] font-black uppercase tracking-widest transition-all ${stockSubTab === 'indian' ? 'text-[#0cd89a] border-b-2 border-[#0cd89a]' : 'text-slate-400'}`}
+                >
+                  Indian Indices
+                </button>
+                <button 
+                  onClick={() => setStockSubTab('global')}
+                  className={`pb-2 px-4 text-[10px] font-black uppercase tracking-widest transition-all ${stockSubTab === 'global' ? 'text-[#0cd89a] border-b-2 border-[#0cd89a]' : 'text-slate-400'}`}
+                >
+                  Global Indices
                 </button>
               </div>
 
-              {/* Search Result */}
-              {searchLoading && (
-                <div className="flex items-center justify-center py-4 gap-2"><RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" /><span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Searching…</span></div>
-              )}
-              {searchResult && !searchLoading && (
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Search Result</p>
-                  <StockRow data={searchResult} name={stockSearch} />
-                </div>
-              )}
-
-              {/* Your Holdings */}
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">📊 Your Holdings</p>
-                {stocksLoading ? (
-                  <div className="flex items-center justify-center py-6 gap-2"><RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" /><span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Loading live data…</span></div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {USER_HOLDINGS.map(name => (
-                      <StockRow key={name} name={name} data={stocksData[name] || null} />
-                    ))}
+              {stockSubTab === 'indian' ? (
+                <>
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={stockSearch}
+                      onChange={e => setStockSearch(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleSearchStock()}
+                      placeholder="Search any stock (e.g. Wipro, SBI)..."
+                      className="w-full bg-white border border-slate-100 rounded-2xl py-3 pl-10 pr-20 outline-none text-xs font-bold text-slate-700 shadow-sm focus:border-indigo-300 transition-all"
+                    />
+                    <button onClick={handleSearchStock} className="absolute right-2 top-1/2 -translate-y-1/2 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl hover:bg-slate-700 transition-all">
+                      Search
+                    </button>
                   </div>
-                )}
-              </div>
 
-              {/* Live Indices */}
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">🏛️ Live Indices</p>
-                {stocksLoading ? (
-                  <div className="flex items-center justify-center py-6 gap-2"><RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" /><span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Loading indices…</span></div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {INDEX_TICKERS.map(name => (
-                      <StockRow key={name} name={name} data={stocksData[name] || null} />
-                    ))}
-                  </div>
-                )}
-              </div>
+                  {/* Search Result */}
+                  {searchLoading && (
+                    <div className="flex items-center justify-center py-4 gap-2"><RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" /><span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Searching…</span></div>
+                  )}
+                  {searchResult && !searchLoading && (
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Search Result</p>
+                      <StockRow data={searchResult} name={stockSearch} />
+                    </div>
+                  )}
 
-              {/* Trending from snapshot */}
-              {snapshot?.trending && (
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">🔥 Top Gainers</p>
-                  <div className="space-y-1.5">
-                    {snapshot.trending.trending_stocks.top_gainers.slice(0, 4).map((s, i) => (
-                      <div key={i} className="bg-emerald-50/50 border border-emerald-100 rounded-xl px-3.5 py-2.5 flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <TrendingUp className="w-3 h-3 text-emerald-500" />
-                          <span className="text-[11px] font-bold text-slate-700 truncate">{s.company_name}</span>
-                        </div>
-                        <span className="text-[10px] font-black text-emerald-600 shrink-0">+{s.percent_change}%</span>
+                  {/* Your Holdings */}
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">📊 Your Holdings</p>
+                    {stocksLoading ? (
+                      <div className="flex items-center justify-center py-6 gap-2"><RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" /><span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Loading live data…</span></div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {USER_HOLDINGS.map(name => (
+                          <StockRow key={name} name={name} data={stocksData[name] || null} />
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              )}
-              {snapshot?.trending && (
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">📉 Top Losers</p>
-                  <div className="space-y-1.5">
-                    {snapshot.trending.trending_stocks.top_losers.slice(0, 4).map((s, i) => (
-                      <div key={i} className="bg-red-50/50 border border-red-100 rounded-xl px-3.5 py-2.5 flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <TrendingDown className="w-3 h-3 text-red-500" />
-                          <span className="text-[11px] font-bold text-slate-700 truncate">{s.company_name}</span>
-                        </div>
-                        <span className="text-[10px] font-black text-red-600 shrink-0">{s.percent_change}%</span>
+
+                  {/* Live Indices */}
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">🏛️ Live Indices</p>
+                    {stocksLoading ? (
+                      <div className="flex items-center justify-center py-6 gap-2"><RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" /><span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Loading indices…</span></div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {INDEX_TICKERS.map(name => {
+                          // Try to find in indicesData first
+                          const item = indicesData.find((idx: any) => 
+                            idx.name?.toLowerCase().includes(name.toLowerCase()) || 
+                            name.toLowerCase().includes(idx.name?.toLowerCase())
+                          );
+                          return (
+                            <StockRow key={name} name={name} data={item || stocksData[name] || null} />
+                          );
+                        })}
                       </div>
-                    ))}
+                    )}
                   </div>
+
+                  {/* Trending from snapshot */}
+                  {snapshot?.trending && (
+                    <div className="space-y-4 pt-2">
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">🔥 Top Gainers</p>
+                        <div className="space-y-1.5">
+                          {snapshot.trending.trending_stocks.top_gainers.slice(0, 4).map((s, i) => (
+                            <div key={i} className="bg-emerald-50/50 border border-emerald-100 rounded-xl px-3.5 py-2.5 flex items-center justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <TrendingUp className="w-3 h-3 text-emerald-500" />
+                                <span className="text-[11px] font-bold text-slate-700 truncate">{s.company_name}</span>
+                              </div>
+                              <span className="text-[10px] font-black text-emerald-600 shrink-0">+{s.percent_change}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">📉 Top Losers</p>
+                        <div className="space-y-1.5">
+                          {snapshot.trending.trending_stocks.top_losers.slice(0, 4).map((s, i) => (
+                            <div key={i} className="bg-red-50/50 border border-red-100 rounded-xl px-3.5 py-2.5 flex items-center justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <TrendingDown className="w-3 h-3 text-red-500" />
+                                <span className="text-[11px] font-bold text-slate-700 truncate">{s.company_name}</span>
+                              </div>
+                              <span className="text-[10px] font-black text-red-600 shrink-0">{s.percent_change}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="py-12 text-center space-y-3">
+                  <Activity className="w-10 h-10 text-slate-200 mx-auto" />
+                  <p className="text-xs font-bold text-slate-400">Global Indices Integration Pending</p>
+                  <p className="text-[10px] text-slate-300 max-w-[200px] mx-auto">Real-time connection to NASDAQ, NYSE, and FTSE 100 is being established.</p>
                 </div>
               )}
             </motion.div>

@@ -113,6 +113,8 @@ export const fetchTrending = () => fetchJSON<TrendingData>('/trending');
 export const fetchMutualFunds = () => fetchJSON<MutualFundsData>('/mutual_funds');
 export const fetchCommodities = () => fetchJSON<CommodityFuture[]>('/commodities');
 export const fetchNSEMostActive = () => fetchJSON<NSEMostActive[]>('/NSE_most_active');
+export const fetchIndices = (type: 'POPULAR' | 'SECTOR' = 'POPULAR') =>
+  fetchJSON<any[]>(`/indices?index_type=${type}`);
 export const fetchStockData = (name: string) =>
   fetchJSON<any>(`/stock?name=${encodeURIComponent(name)}`);
 export const fetchNews = () => fetchJSON<any>('/news');

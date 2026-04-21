@@ -249,9 +249,9 @@ const ProfileScreen = ({ profile, onUpdate, onComplete }: ProfileProps) => {
   const prev = () => setStep(s => Math.max(s - 1, 0));
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-50 min-h-screen text-slate-900 pb-32 font-sans overflow-y-auto no-scrollbar">
-      
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 flex justify-between items-center px-6 py-5 shrink-0">
+    <div className="flex-1 flex flex-col min-h-screen text-[#1b3a57] font-sans">
+      {/* Header - Mobile Only */}
+      <header className="md:hidden sticky top-0 z-50 bg-[#f5f4ef]/90 backdrop-blur-xl border-b border-[#e6e4d9] flex justify-between items-center px-6 py-5 shrink-0">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[.4em] text-brand-accent mb-1 leading-none">Security Provisioning</p>
           <h1 className="text-xl font-black tracking-tight text-brand-primary leading-none">Identity Architect</h1>
@@ -265,131 +265,131 @@ const ProfileScreen = ({ profile, onUpdate, onComplete }: ProfileProps) => {
         )}
       </header>
 
-      <div className="px-6 py-8">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
+      <div className="flex-1 flex items-center justify-center p-5 md:p-12 overflow-y-auto no-scrollbar">
+        <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-4xl space-y-12">
           
+          {/* Progress Navigator - Custom Premium Design */}
           {step < ProfileSTEPS.length && (
-            <nav className="relative flex justify-between items-center px-4 max-w-xl mx-auto py-4">
-              <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-100 -translate-y-1/2 z-0 mx-10" />
-              <motion.div 
-                className="absolute top-1/2 left-0 h-0.5 bg-brand-accent -translate-y-1/2 z-0 mx-10 origin-left"
-                initial={{ width: 0 }}
-                animate={{ width: `${(step / (ProfileSTEPS.length - 1)) * 100}%` }}
-                transition={{ duration: 0.8, ease: [0.65, 0, 0.35, 1] }}
-              />
-              
-              {ProfileSTEPS.map((s, i) => {
-                const active = i === step;
-                const done = i < step;
-                return (
-                  <div key={s.id} className="relative z-10 flex flex-col items-center">
-                    <motion.div
-                      animate={{ 
-                        scale: active ? 1.25 : 1,
-                        backgroundColor: done ? '#10B981' : active ? '#C5A059' : '#FFFFFF',
-                        borderColor: done ? '#10B981' : active ? '#C5A059' : '#E2E8F0',
-                        color: done || active ? '#FFFFFF' : '#94A3B8'
-                      }}
-                      className={`w-9 h-9 rounded-[14px] border-2 flex items-center justify-center transition-all ${active ? 'shadow-premium shadow-brand-accent/30' : 'shadow-sm'}`}
-                    >
-                      {done ? <CheckCircle2 className="w-4 h-4" /> : <s.icon className="w-4 h-4" />}
-                    </motion.div>
-                    <motion.span 
-                      animate={{ 
-                        opacity: active ? 1 : 0.4,
-                        y: active ? 8 : 4
-                      }}
-                      className={`absolute top-full text-[7px] font-black uppercase tracking-widest whitespace-nowrap transition-colors ${active ? 'text-brand-primary' : 'text-slate-400'}`}
-                    >
-                      {s.label.split(' ')[0]}
-                    </motion.span>
-                  </div>
-                )
-              })}
-            </nav>
+            <div className="bg-[#fdfcf9] border border-[#e6e4d9] rounded-[32px] p-8 shadow-sm">
+              <div className="flex justify-between items-center relative">
+                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-100 -translate-y-1/2 -z-0 mx-8" />
+                <motion.div 
+                  className="absolute top-1/2 left-0 h-0.5 bg-brand-accent -translate-y-1/2 z-0 mx-8 origin-left"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(step / (ProfileSTEPS.length - 1)) * 100}%` }}
+                  transition={{ duration: 0.8, ease: "circOut" }}
+                />
+                
+                {ProfileSTEPS.map((s, i) => {
+                  const active = i === step;
+                  const done = i < step;
+                  return (
+                    <div key={s.id} className="relative z-10 flex flex-col items-center">
+                      <motion.div
+                        whileHover={{ y: -5, boxShadow: '0 20px 40px rgba(0,0,0,0.08)' }}
+                        animate={{ 
+                          scale: active ? 1.25 : 1,
+                          backgroundColor: done ? "#10B981" : active ? "#C5A059" : "#FFFFFF",
+                          borderColor: done ? "#10B981" : active ? "#C5A059" : "#E2E8F0",
+                          color: done || active ? "#FFFFFF" : "#CBD5E1"
+                        }}
+                        className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center transition-all ${active ? 'shadow-lg shadow-brand-accent/20' : ''}`}
+                      >
+                        {done ? <CheckCircle2 className="w-4 h-4" /> : <s.icon className="w-4 h-4" />}
+                      </motion.div>
+                      <span className={`absolute top-full mt-4 text-[8px] font-black uppercase tracking-[0.2em] whitespace-nowrap transition-colors ${active ? 'text-brand-primary' : 'text-slate-400'}`}>
+                        {s.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
-          <div className="bg-white border border-slate-100 rounded-[48px] p-8 md:p-14 relative overflow-hidden shadow-premium">
-             <div className="absolute top-0 right-0 w-80 h-80 bg-brand-accent/5 rounded-full blur-[100px] -mr-40 -mt-40 pointer-events-none" />
-             <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/5 rounded-full blur-[80px] -ml-32 -mb-32 pointer-events-none" />
-             
-             {step < ProfileSTEPS.length ? (
-               <div className="space-y-10 relative z-10">
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-4">
-                     <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                           <span className="text-[10px] font-black text-brand-accent uppercase tracking-[.4em] bg-brand-accent/10 px-3 py-1 rounded-full border border-brand-accent/10">Step {step + 1} of {ProfileSTEPS.length}</span>
-                           <div className="w-1 h-1 rounded-full bg-slate-300" />
-                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{Math.round(((step + 1) / ProfileSTEPS.length) * 100)}% Integrated</span>
-                        </div>
-                        <h2 className="text-3xl font-black text-brand-primary tracking-tighter uppercase">{ProfileSTEPS[step].label}</h2>
-                     </div>
-                     <div className="w-16 h-16 bg-white border border-slate-100 rounded-2xl flex items-center justify-center text-brand-accent shadow-premium relative overflow-hidden group/icon shrink-0">
-                        <div className="absolute inset-0 bg-brand-accent opacity-0 group-hover/icon:opacity-5 transition-opacity" />
-                        {React.createElement(ProfileSTEPS[step].icon, { className: 'w-8 h-8 relative z-10' })}
-                     </div>
-                  </div>
+          <div className="bg-white border border-slate-100 rounded-[48px] p-10 md:p-16 relative overflow-hidden shadow-2xl">
+              <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-brand-accent/5 rounded-full blur-[120px] -mr-40 -mt-40 pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-500/5 rounded-full blur-[100px] -ml-32 -mb-32 pointer-events-none" />
+              
+              {step < ProfileSTEPS.length ? (
+                <div className="space-y-12 relative z-10">
+                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+                      <div className="space-y-4">
+                         <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-black text-brand-accent uppercase tracking-[.4em] bg-brand-accent/10 px-4 py-1.5 rounded-full border border-brand-accent/10">PHASE 0{step + 1}</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{Math.round(((step + 1) / ProfileSTEPS.length) * 100)}% Synchronized</span>
+                         </div>
+                         <h2 className="text-4xl font-black text-brand-primary tracking-tight uppercase leading-none">{ProfileSTEPS[step].label}</h2>
+                      </div>
+                      <div className="w-20 h-20 bg-[#fdfcf9] border border-slate-100 rounded-3xl flex items-center justify-center text-brand-accent shadow-xl shrink-0 group hover:scale-105 transition-transform cursor-pointer">
+                         {React.createElement(ProfileSTEPS[step].icon, { className: 'w-10 h-10' })}
+                      </div>
+                   </div>
 
-                  <AnimatePresence mode="wait">
-                     <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
-                        {step === 0 && <Step1BasicInfo data={profile} update={update} />}
-                        {step === 1 && <Step2Income data={profile} update={update} />}
-                        {step === 2 && <Step3Expenses data={profile} update={update} />}
-                        {step === 3 && <Step4Assets data={profile} update={update} />}
-                        {step === 4 && <Step5Goals data={profile} update={update} />}
-                        {step === 5 && <Step6RiskQuiz data={profile} update={update} />}
-                     </motion.div>
-                  </AnimatePresence>
+                   <AnimatePresence mode="wait">
+                      <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="min-h-[300px]">
+                         {step === 0 && <Step1BasicInfo data={profile} update={update} />}
+                         {step === 1 && <Step2Income data={profile} update={update} />}
+                         {step === 2 && <Step3Expenses data={profile} update={update} />}
+                         {step === 3 && <Step4Assets data={profile} update={update} />}
+                         {step === 4 && <Step5Goals data={profile} update={update} />}
+                         {step === 5 && <Step6RiskQuiz data={profile} update={update} />}
+                      </motion.div>
+                   </AnimatePresence>
 
-                  <div className="flex gap-4 pt-12 mt-12 border-t border-slate-50 relative z-10">
-                     {step > 0 && (
-                       <button onClick={prev} className="px-8 py-4.5 rounded-2xl border border-slate-200 text-slate-500 font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95">
-                         <ChevronLeft className="w-4 h-4" /> Back
-                       </button>
-                     )}
-                     <button onClick={next} className="flex-1 bg-brand-primary hover:bg-brand-accent text-white font-black py-4.5 rounded-2xl uppercase tracking-[.3em] text-[10px] transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95 leading-none group">
-                        {step === ProfileSTEPS.length - 1 ? 'Generate Digital Twin' : 'Continue Integration'} <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                     </button>
-                  </div>
-               </div>
-             ) : (
-               <div className="text-center py-10 space-y-12 relative z-10">
-                  <div className="space-y-4">
-                     <div className="w-24 h-24 bg-brand-accent/10 border border-brand-accent/20 rounded-[32px] mx-auto flex items-center justify-center text-brand-accent relative">
-                        <Sparkles className="w-12 h-12" />
-                        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute -top-2 -right-2 bg-brand-success text-white p-2 rounded-full shadow-lg"><CheckCircle2 className="w-4 h-4" /></motion.div>
-                     </div>
-                     <h2 className="text-3xl font-black text-brand-primary tracking-tighter">Strategic Twin Synthesized</h2>
-                     <p className="text-sm text-slate-500 font-medium max-w-sm mx-auto">Your identity has been securely mapped to the SecureWealth alpha engine.</p>
-                  </div>
-                  
-                  <div className="grid gap-4 max-w-sm mx-auto">
-                     {[
-                        { label: 'Calculated Risk', val: profile.riskPreference === 'high' ? 'Aggressive' : 'Conservative' },
-                        { label: 'Linked Objectives', val: `${profile.goals.length} Strategic Nodes` },
-                        { label: 'Security Grade', val: 'Bank-Grade RSA-256' }
-                     ].map(item => (
-                        <div key={item.label} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex justify-between items-center text-[10px] uppercase font-black tracking-widest">
-                           <span className="text-slate-400">{item.label}</span>
-                           <span className="text-brand-primary">{item.val}</span>
-                        </div>
-                     ))}
-                  </div>
+                   <div className="flex gap-6 pt-12 border-t border-slate-50 mt-12">
+                      {step > 0 && (
+                        <button onClick={prev} className="px-10 py-5 rounded-2xl border border-slate-200 text-slate-500 font-black uppercase tracking-widest text-[11px] hover:bg-slate-50 transition-all flex items-center gap-3 active:scale-[0.98]">
+                          <ChevronLeft className="w-5 h-5" /> Previous Phase
+                        </button>
+                      )}
+                      <button onClick={next} className="flex-1 bg-brand-primary hover:bg-slate-900 text-white font-black py-5 rounded-2xl uppercase tracking-[.4em] text-[11px] transition-all flex items-center justify-center gap-4 shadow-xl active:scale-[0.98] group">
+                         {step === ProfileSTEPS.length - 1 ? 'Finalize Synthesis' : 'Proceed to Next Phase'} 
+                         <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      </button>
+                   </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 space-y-14 relative z-10">
+                   <div className="space-y-6">
+                      <div className="w-28 h-28 bg-emerald-50 border border-emerald-100 rounded-[40px] mx-auto flex items-center justify-center text-emerald-500 relative shadow-inner">
+                         <Sparkles className="w-14 h-14" />
+                         <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute -top-3 -right-3 bg-emerald-600 text-white p-2.5 rounded-full shadow-xl border-4 border-white"><CheckCircle2 className="w-5 h-5" /></motion.div>
+                      </div>
+                      <div className="space-y-2">
+                        <h2 className="text-4xl font-black text-brand-primary tracking-tight uppercase">Digital Persona Synthesized</h2>
+                        <p className="text-base text-slate-500 font-medium max-w-md mx-auto">Your identity has been successfully mapped to the SecureWealth core engine.</p>
+                      </div>
+                   </div>
+                   
+                   <div className="grid gap-4 max-w-md mx-auto bg-slate-50/50 p-8 rounded-[32px] border border-slate-100">
+                      {[
+                         { label: 'Capital Strategy', val: profile.riskPreference === 'high' ? 'Aggressive Growth' : 'Capital Stability' },
+                         { label: 'Strategic Objectives', val: `${profile.goals.length} Active Nodes` },
+                         { label: 'Provisioning Grade', val: 'Institutional (256-bit)' }
+                      ].map(item => (
+                         <div key={item.label} className="flex justify-between items-center py-3 border-b border-slate-200/50 last:border-0">
+                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{item.label}</span>
+                            <span className="text-[11px] font-black text-brand-primary uppercase tracking-wider">{item.val}</span>
+                         </div>
+                      ))}
+                   </div>
 
-                  <button 
-                     onClick={() => onComplete?.()} 
-                     className="w-full bg-brand-primary hover:bg-brand-accent text-white font-black py-5 rounded-2xl uppercase tracking-[.4em] text-[10px] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
-                  >
-                     <Shield className="w-4 h-4" /> Deploy to Digital Twin
-                  </button>
-               </div>
-             )}
+                   <button 
+                      onClick={() => onComplete?.()} 
+                      className="w-full max-w-md mx-auto bg-brand-primary hover:bg-slate-900 text-white font-black py-6 rounded-[24px] uppercase tracking-[.5em] text-[11px] transition-all shadow-2xl active:scale-[0.98] flex items-center justify-center gap-4"
+                   >
+                      <Shield className="w-5 h-5" /> Deploy Unified Twin
+                   </button>
+                </div>
+              )}
           </div>
 
-          <div className="flex items-start gap-3 opacity-60 max-w-md mx-auto px-4">
-            <AlertTriangle className="w-4 h-4 text-brand-accent shrink-0 mt-0.5" />
-            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed text-center">
-               All data encrypted via 256-bit AES protocol. We strictly adhere to PCI-DSS & RBI Account Aggregator guidelines for sovereign privacy.
+          <div className="flex items-start gap-4 opacity-70 max-w-lg mx-auto bg-[#fdfcf9] border border-[#e6e4d9] rounded-2xl p-6">
+            <AlertTriangle className="w-5 h-5 text-brand-accent shrink-0 mt-0.5" />
+            <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.15em] leading-relaxed">
+               All Provisioning data encrypted via military-grade AES-256. Fully compliant with RBI Account Aggregator & Personal Data Protection guidelines.
             </p>
           </div>
 
