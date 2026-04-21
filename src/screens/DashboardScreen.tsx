@@ -10,8 +10,8 @@ import {
 import { MOCK_TRANSACTIONS } from '../data/mockData';
 import type { ProfileData } from '../types/profile';
 import {
-  Bell, ShieldCheck, Sparkles, ArrowUpRight, ArrowDownLeft, TrendingUp,
-  Layers, Zap, Clock, Shield,
+  ShieldCheck, Sparkles, ArrowUpRight, ArrowDownLeft, TrendingUp,
+  Layers, Clock, Shield,
 } from 'lucide-react';
 
 const fmt = (v: number) =>
@@ -49,9 +49,6 @@ const DashboardScreen = ({ profile, onSectionChange }: DashboardProps) => {
   };
 
   const totalPhysical = MOCK_PHYSICAL_ASSETS.reduce((s, a) => s + a.currentValue, 0);
-  const monthlyIncome = Number(profile.monthlySalary) + Number(profile.sideIncome);
-  const monthlyExpenses = Object.values(profile.expenses).reduce((a, b) => Number(a) + Number(b), 0);
-  const monthlySavings = monthlyIncome - monthlyExpenses;
 
   return (
     <div className="flex-1 flex flex-col min-h-screen text-slate-900 font-sans">
