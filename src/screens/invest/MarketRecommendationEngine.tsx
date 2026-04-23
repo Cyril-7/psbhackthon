@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import {
   fetchFullMarketSnapshot, deriveMarketSignals, buildRecommendations,
-  fetchPortfolioNews, fetchStockData, fetchIndices,
+  fetchPortfolioNews, fetchStockDataCached, fetchIndicesCached, getMarketStatusLabel,
   type MarketSnapshot, type MarketSignal, type StrategyRecommendation,
 } from '../../services/marketService';
 import { getGeminiResponse } from '../../services/gemini';
@@ -127,46 +127,66 @@ const MarketStatusStrip: React.FC<{ signals: MarketSignal[] }> = ({ signals }) =
 // ─── Live Stock Row ───────────────────────────────────────────────────────────
 
 const StockRow: React.FC<{ data: any; name: string }> = ({ data, name }) => {
-  const price = data?.currentPrice?.NSE || data?.currentPrice?.BSE || data?.price || '—';
-  const change = parseFloat(data?.percentChange || data?.percent_change || '0');
+  // Support both live API shape and fallback/index shape
+  const price = data?.currentPrice?.NSE ?? data?.currentPrice?.BSE ?? data?.price ?? null;
+  const change = parseFloat(data?.percentChange ?? data?.percent_change ?? '0');
   const isUp = change >= 0;
-  const high = data?.high || data?.dayHigh || '—';
-  const low = data?.low || data?.dayLow || '—';
-  const volume = data?.volume || '—';
+  const high = data?.high ?? data?.dayHigh ?? null;
+  const low = data?.low ?? data?.dayLow ?? null;
+  const volume = data?.volume ?? null;
+  const isFallback = !!(data?.isFallback);
+  const noData = price === null;
+
+  const fmtPrice = (v: number | string | null) => {
+    if (v === null || v === undefined) return '—';
+    const n = typeof v === 'string' ? parseFloat(v) : v;
+    return isNaN(n) ? '—' : n.toLocaleString('en-IN');
+  };
 
   return (
-    <div className="bg-white border border-slate-100 rounded-xl px-3.5 py-3 transition-all hover:bg-slate-50/50">
+    <div className={`border rounded-xl px-3.5 py-3 transition-all hover:bg-slate-50/50 ${isFallback ? 'bg-amber-50/40 border-amber-100' : 'bg-white border-slate-100'}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
-            {isUp ? <TrendingUp className="w-3.5 h-3.5 text-emerald-500" /> : <TrendingDown className="w-3.5 h-3.5 text-red-500" />}
+          <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${noData ? 'bg-slate-50 border-slate-100' : isUp ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+            {noData
+              ? <Minus className="w-3.5 h-3.5 text-slate-300" />
+              : isUp
+                ? <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                : <TrendingDown className="w-3.5 h-3.5 text-red-500" />}
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-bold text-slate-800 truncate">{data?.companyName || data?.company_name || name}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[11px] font-bold text-slate-800 truncate">{data?.companyName || data?.company_name || name}</p>
+              {isFallback && (
+                <span className="text-[6px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 shrink-0">Last Session</span>
+              )}
+            </div>
             <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{data?.tickerId || data?.ticker_id || 'NSE'}</p>
           </div>
         </div>
         <div className="text-right shrink-0 pl-2">
-          <p className="text-[12px] font-black text-slate-900">₹{typeof price === 'number' ? price.toLocaleString('en-IN') : price}</p>
-          <p className={`text-[9px] font-black ${isUp ? 'text-emerald-500' : 'text-red-500'}`}>
-            {isUp ? '+' : ''}{change.toFixed(2)}%
-          </p>
+          <p className="text-[12px] font-black text-slate-900">₹{fmtPrice(price)}</p>
+          {!noData && (
+            <p className={`text-[9px] font-black ${isUp ? 'text-emerald-500' : 'text-red-500'}`}>
+              {isUp ? '+' : ''}{change.toFixed(2)}%
+            </p>
+          )}
         </div>
       </div>
-      
-      {data && (
+
+      {data && !noData && (
         <div className="mt-2.5 pt-2.5 border-t border-slate-50 grid grid-cols-3 gap-2">
           <div>
             <p className="text-[7px] font-black uppercase tracking-widest text-[#8a9bb0]">High</p>
-            <p className="text-[9px] font-bold text-slate-500">₹{typeof high === 'number' ? high.toLocaleString('en-IN') : high}</p>
+            <p className="text-[9px] font-bold text-slate-500">₹{fmtPrice(high)}</p>
           </div>
           <div className="text-center">
             <p className="text-[7px] font-black uppercase tracking-widest text-[#8a9bb0]">Low</p>
-            <p className="text-[9px] font-bold text-slate-500">₹{typeof low === 'number' ? low.toLocaleString('en-IN') : low}</p>
+            <p className="text-[9px] font-bold text-slate-500">₹{fmtPrice(low)}</p>
           </div>
           <div className="text-right">
             <p className="text-[7px] font-black uppercase tracking-widest text-[#8a9bb0]">Volume</p>
-            <p className="text-[9px] font-bold text-slate-500">{typeof volume === 'number' ? volume.toLocaleString('en-IN') : volume}</p>
+            <p className="text-[9px] font-bold text-slate-500">{volume !== null ? (typeof volume === 'number' ? volume.toLocaleString('en-IN') : volume) : '—'}</p>
           </div>
         </div>
       )}
@@ -316,6 +336,12 @@ const MarketRecommendationEngine: React.FC<Props> = ({ profile }) => {
   const [executedIds, setExecutedIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'news' | 'stocks' | 'actions'>('news');
   const [isOnline, setIsOnline] = useState(true);
+  const [dataFromCache, setDataFromCache] = useState(false);
+  const [dataIsFallback, setDataIsFallback] = useState(false);
+  const [newsFromCache, setNewsFromCache] = useState(false);
+  const [stocksFromCache, setStocksFromCache] = useState(false);
+  const [stocksIsFallback, setStocksIsFallback] = useState(false);
+  const [marketStatus, setMarketStatus] = useState(getMarketStatusLabel());
 
   // Live stocks state
   const [stocksData, setStocksData] = useState<Record<string, any>>({});
@@ -343,15 +369,22 @@ const MarketRecommendationEngine: React.FC<Props> = ({ profile }) => {
   const loadMarketData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     setIsOnline(navigator.onLine);
+    setMarketStatus(getMarketStatusLabel());
     try {
       const snap = await fetchFullMarketSnapshot();
       setSnapshot(snap);
+      setDataFromCache(!!(snap as any).fromCache);
+      setDataIsFallback(!!(snap as any).isFallback);
       const sigs = deriveMarketSignals(snap);
       setSignals(sigs);
       const recs = buildRecommendations(snap, sigs, portfolioMix, riskProfile, 'long');
       setRecommendations(recs);
       setNewsLoading(true);
-      fetchPortfolioNews(USER_HOLDINGS).then(n => { setNews(n); setNewsLoading(false); });
+      fetchPortfolioNews(USER_HOLDINGS).then(result => {
+        setNews(result.news);
+        setNewsFromCache(result.fromCache);
+        setNewsLoading(false);
+      });
       setAiLoading(true);
       const hasLiveData = snap.trending || snap.commodities || snap.mutualFunds;
       const contextStr = sigs.map(s => `${s.indicator}: ${s.value} (${s.trend})`).join('; ');
@@ -368,28 +401,38 @@ const MarketRecommendationEngine: React.FC<Props> = ({ profile }) => {
     if (activeTab !== 'stocks') return;
     const loadStocks = async () => {
       setStocksLoading(true);
+      let anyFromCache = false;
       try {
-        // 1. Fetch user holdings (Stocks)
+        // 1. Fetch user holdings with cache fallback
         const holdResults: Record<string, any> = {};
         const holdPromises = USER_HOLDINGS.map(async name => {
-          const data = await fetchStockData(name);
-          if (data) holdResults[name] = data;
+          const { data, fromCache } = await fetchStockDataCached(name);
+          if (data) { holdResults[name] = data; if (fromCache) anyFromCache = true; }
         });
 
-        // 2. Fetch all indices (Popular + Sectoral)
+        // 2. Fetch all indices with cache fallback
         const [popRes, secRes] = await Promise.allSettled([
-          fetchIndices('POPULAR'),
-          fetchIndices('SECTOR')
+          fetchIndicesCached('POPULAR'),
+          fetchIndicesCached('SECTOR')
         ]);
 
         const allIndices = [
-          ...(popRes.status === 'fulfilled' && popRes.value ? popRes.value : []),
-          ...(secRes.status === 'fulfilled' && secRes.value ? secRes.value : [])
+          ...(popRes.status === 'fulfilled' ? popRes.value.data : []),
+          ...(secRes.status === 'fulfilled' ? secRes.value.data : [])
         ];
+        if (
+          (popRes.status === 'fulfilled' && popRes.value.fromCache) ||
+          (secRes.status === 'fulfilled' && secRes.value.fromCache)
+        ) anyFromCache = true;
 
         await Promise.allSettled(holdPromises);
         setStocksData(holdResults);
         setIndicesData(allIndices);
+        setStocksFromCache(anyFromCache);
+        // Check if any returned data is fallback
+        const anyFallback = Object.values(holdResults).some((d: any) => d?.isFallback) ||
+          allIndices.some((d: any) => d?.isFallback);
+        setStocksIsFallback(anyFallback);
       } catch (err) {
         console.error('Error loading stocks/indices:', err);
       } finally {
@@ -440,20 +483,31 @@ const MarketRecommendationEngine: React.FC<Props> = ({ profile }) => {
           <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-5 pointer-events-none" style={{ background: '#0cd89a', transform: 'translate(30%, -30%)', filter: 'blur(40px)' }} />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#0cd89a]/10 border border-[#0cd89a]/20 flex items-center justify-center"><BarChart3 className="w-4 h-4 text-[#0cd89a]" /></div>
-                <div><p className="text-[8px] font-black uppercase tracking-[.3em] text-[#0cd89a]">Alpha Intelligence</p><h2 className="text-sm font-black text-white leading-none">Market Strategy Engine</h2></div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
-                  {isOnline ? <Wifi className="w-2.5 h-2.5 text-[#0cd89a]" /> : <WifiOff className="w-2.5 h-2.5 text-red-400" />}
-                  <span className="text-[8px] font-bold text-white/60">{isOnline ? 'LIVE' : 'OFFLINE'}</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#0cd89a]/10 border border-[#0cd89a]/20 flex items-center justify-center"><BarChart3 className="w-4 h-4 text-[#0cd89a]" /></div>
+                  <div><p className="text-[8px] font-black uppercase tracking-[.3em] text-[#0cd89a]">Alpha Intelligence</p><h2 className="text-sm font-black text-white leading-none">Market Strategy Engine</h2></div>
                 </div>
-                <button onClick={() => loadMarketData(true)} disabled={refreshing} className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all">
-                  <RefreshCw className={`w-3.5 h-3.5 text-white/60 ${refreshing ? 'animate-spin' : ''}`} />
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Market open/closed pill */}
+                  <div className={`flex items-center gap-1 px-2 py-1 rounded-lg border ${
+                    marketStatus.open
+                      ? 'bg-emerald-500/10 border-emerald-500/20'
+                      : 'bg-amber-500/10 border-amber-500/20'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${marketStatus.open ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                    <span className={`text-[8px] font-bold ${marketStatus.open ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {marketStatus.open ? 'LIVE' : 'CLOSED'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
+                    {isOnline ? <Wifi className="w-2.5 h-2.5 text-[#0cd89a]" /> : <WifiOff className="w-2.5 h-2.5 text-red-400" />}
+                    <span className="text-[8px] font-bold text-white/60">{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+                  </div>
+                  <button onClick={() => loadMarketData(true)} disabled={refreshing} className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all">
+                    <RefreshCw className={`w-3.5 h-3.5 text-white/60 ${refreshing ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               </div>
-            </div>
 
             {/* AI Insight */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-3 mb-4">
@@ -472,6 +526,29 @@ const MarketRecommendationEngine: React.FC<Props> = ({ profile }) => {
             </div>
           </div>
         </div>
+
+        {/* ── Market Closed Global Banner ── */}
+        {(!marketStatus.open || dataFromCache || dataIsFallback) && (
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+            <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-black text-amber-800 uppercase tracking-wide">
+                {dataIsFallback ? 'Last Session Data (Apr 22, 2025)' : dataFromCache ? 'Cached Data' : 'Market Closed'}
+              </p>
+              <p className="text-[9px] font-medium text-amber-700 leading-relaxed">
+                {dataIsFallback
+                  ? 'NSE/BSE data unavailable after hours. Showing Apr 22 closing prices. Live prices return Mon–Fri 9:15–15:30 IST.'
+                  : dataFromCache
+                    ? 'Serving cached last-session data. Prices update when market reopens.'
+                    : 'NSE/BSE closed. Displaying last session data. Market reopens Mon–Fri at 9:15 AM IST.'}
+              </p>
+            </div>
+            <button onClick={() => loadMarketData(true)} disabled={refreshing}
+              className="shrink-0 text-[9px] font-black text-amber-600 border border-amber-300 bg-white rounded-xl px-3 py-1.5 hover:bg-amber-100 transition-all uppercase tracking-widest">
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* ── Market Status ── */}
         <MarketStatusStrip signals={signals} />
@@ -497,15 +574,23 @@ const MarketRecommendationEngine: React.FC<Props> = ({ profile }) => {
                 <Search className="w-3 h-3 text-indigo-500" />
                 <p className="text-[8px] font-bold text-indigo-700">Tracking: {USER_HOLDINGS.join(', ')}</p>
               </div>
+              {/* Cache / Fallback badge */}
+              {(newsFromCache || !marketStatus.open) && (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-3">
+                  <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <p className="text-[9px] font-bold text-amber-700">
+                    {newsFromCache
+                      ? 'Cached news from last session. Live updates return when market reopens.'
+                      : 'Market closed — showing last known financial news (Apr 22, 2025).'}
+                  </p>
+                </div>
+              )}
               {newsLoading ? (
                 <div className="flex flex-col items-center justify-center py-8 gap-2"><RefreshCw className="w-5 h-5 text-indigo-400 animate-spin" /><p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Fetching news…</p></div>
               ) : news.length > 0 ? (
                 <div className="space-y-1.5">{news.slice(0, 15).map((item, i) => <NewsCard key={i} item={item} index={i} />)}</div>
               ) : (
                 <div className="bg-[#fdfcf9] border border-[#e6e4d9] rounded-2xl p-5 text-center space-y-2"><Newspaper className="w-8 h-8 text-slate-200 mx-auto" /><p className="text-xs font-bold text-slate-500">No news available</p><p className="text-[10px] text-slate-400">News for {USER_HOLDINGS.join(', ')} will appear here.</p></div>
-              )}
-              {!snapshot?.trending && (
-                <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl p-2.5 mt-2"><Info className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" /><p className="text-[9px] text-amber-700 font-medium leading-relaxed">Live news partially unavailable. Refresh to re-fetch.</p></div>
               )}
             </motion.div>
           )}
@@ -514,6 +599,18 @@ const MarketRecommendationEngine: React.FC<Props> = ({ profile }) => {
           {activeTab === 'stocks' && (
             <motion.div key="stocks" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-4">
               
+              {/* Fallback / Cache badge for stocks */}
+              {(stocksFromCache || stocksIsFallback) && (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                  <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <p className="text-[9px] font-bold text-amber-700">
+                    {stocksIsFallback
+                      ? 'Showing Apr 22, 2025 closing prices. Each row is tagged “Last Session”. Live prices return Mon–Fri 9:15–15:30 IST.'
+                      : 'Market Closed — Showing cached last session prices. Updates when market reopens.'}
+                  </p>
+                </div>
+              )}
+
               {/* Sub-tabs for Indian/Global */}
               <div className="flex border-b border-slate-100 mb-2">
                 <button 

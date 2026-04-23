@@ -42,12 +42,13 @@ const NeuralChatPanel: React.FC<Props> = ({ profile }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `Hello ${profile.fullName}! 👋 I'm your AI Unified Wealth Twin — your personal financial consciousness.\n\nI've analyzed your complete wealth profile across ${TWIN_OVERVIEW.institutionsLinked} institutions with a net worth of ₹${fmtShort(NET_WORTH_METRICS.total)}.\n\nHow can I help optimize your wealth today?`,
+      content: `Hello ${profile.fullName?.split(' ')[0] || 'there'}! 👋 I'm your AI Unified Wealth Twin — your personal financial consciousness.\n\nI've analyzed your complete wealth profile across ${TWIN_OVERVIEW.institutionsLinked} institutions. Your net worth is ₹${fmtShort(NET_WORTH_METRICS.total)} growing at +₹2.4L/month.\n\nWhat would you like to optimize today? Try one of the quick actions below.`,
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [apiOnline, setApiOnline] = useState(true);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -60,10 +61,7 @@ const NeuralChatPanel: React.FC<Props> = ({ profile }) => {
     if (!msg || isLoading) return;
 
     const userMsg: Message = { role: 'user', content: msg, timestamp: new Date() };
-    const history: GeminiChatMessage[] = messages.map(m => ({
-      role: m.role,
-      content: m.content
-    }));
+    const history: GeminiChatMessage[] = messages.map(m => ({ role: m.role, content: m.content }));
 
     setMessages(prev => [...prev, userMsg]);
     setInput('');
@@ -71,22 +69,28 @@ const NeuralChatPanel: React.FC<Props> = ({ profile }) => {
 
     try {
       const response = await getWealthTwinChatResponse(
-        msg, history, profile, Number(NET_WORTH_METRICS.total), 
+        msg, history, profile, Number(NET_WORTH_METRICS.total),
         totalIncome, totalExpenses, riskAlerts,
         MOCK_PHYSICAL_ASSETS, MOCK_WEALTH_GOALS
       );
 
+      // Detect if Gemini was used (live) or fallback was triggered
+      // We heuristically check: if the response doesn't contain typical API failure messages
+      const isLiveResponse = response && !response.includes('neural sync delay');
+      setApiOnline(!!isLiveResponse);
+
       const assistantMsg: Message = {
         role: 'assistant',
-        content: response || "I'm experiencing a brief neural sync delay. Please try again soon.",
+        content: response || "I couldn't generate a response. Please check your API key or try again.",
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch (err) {
       console.error("Neural Link failed:", err);
+      setApiOnline(false);
       const errorMsg: Message = {
         role: 'assistant',
-        content: "I lost contact with the wealth matrix. Please try refresh.",
+        content: "I lost contact with the wealth matrix. Please refresh the page and try again.",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -111,44 +115,72 @@ const NeuralChatPanel: React.FC<Props> = ({ profile }) => {
               <p className="text-[11px] text-[#5c6065] font-medium">Gemini 1.5 Flash • {TWIN_OVERVIEW.dataPoints} data points synced</p>
             </div>
           </div>
-          <div className="flex items-center gap-2.5 bg-[#d2efe2] border border-[#bce3d1] px-3 py-1.5 rounded-full">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#1f8c5c] animate-pulse" />
-            <span className="text-[9px] font-black text-[#1f8c5c] uppercase tracking-wider">Live Sync</span>
+          <div className={`flex items-center gap-2.5 px-3 py-1.5 rounded-full border transition-all ${
+            apiOnline
+              ? 'bg-[#d2efe2] border-[#bce3d1]'
+              : 'bg-amber-50 border-amber-200'
+          }`}>
+            <div className={`w-1.5 h-1.5 rounded-full ${
+              apiOnline ? 'bg-[#1f8c5c] animate-pulse' : 'bg-amber-500'
+            }`} />
+            <span className={`text-[9px] font-black uppercase tracking-wider ${
+              apiOnline ? 'text-[#1f8c5c]' : 'text-amber-700'
+            }`}>{apiOnline ? 'Live Sync' : 'Smart Mode'}</span>
           </div>
         </div>
       </motion.div>
 
       {/* ── Chat Messages ── */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 pr-1 no-scrollbar min-h-0">
-        {messages.map((msg, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div className={`max-w-[85%] relative group shadow-sm ${
-              msg.role === 'user'
-                ? 'bg-[#1b3a57] text-white rounded-2xl rounded-tr-sm'
-                : 'bg-[#fdfcf9] border border-[#e6e4d9] text-[#1b3a57] rounded-2xl rounded-tl-sm'
-            }`}>
-              {msg.role === 'assistant' && (
-                <div className="absolute -left-2 -top-2">
-                  <div className="w-10 h-10 bg-emerald-500/20 border border-emerald-500/30 rounded-lg flex items-center justify-center">
-                    <Brain className="w-6 h-6 text-emerald-500" />
+        {messages.map((msg, i) => {
+          // Render **bold** markdown formatting
+          const renderContent = (text: string) => {
+            const lines = text.split('\n');
+            return lines.map((line, li) => {
+              const parts = line.split(/\*\*(.*?)\*\*/g);
+              return (
+                <span key={li}>
+                  {parts.map((part, pi) =>
+                    pi % 2 === 1
+                      ? <strong key={pi} className="font-black">{part}</strong>
+                      : <span key={pi}>{part}</span>
+                  )}
+                  {li < lines.length - 1 && <br />}
+                </span>
+              );
+            });
+          };
+
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div className={`max-w-[85%] relative group shadow-sm ${
+                msg.role === 'user'
+                  ? 'bg-[#1b3a57] text-white rounded-2xl rounded-tr-sm'
+                  : 'bg-[#fdfcf9] border border-[#e6e4d9] text-[#1b3a57] rounded-2xl rounded-tl-sm'
+              }`}>
+                {msg.role === 'assistant' && (
+                  <div className="absolute -left-2 -top-2">
+                    <div className="w-10 h-10 bg-emerald-500/20 border border-emerald-500/30 rounded-lg flex items-center justify-center">
+                      <Brain className="w-6 h-6 text-emerald-500" />
+                    </div>
                   </div>
+                )}
+                <div className="px-5 py-4">
+                  <p className="text-sm font-medium leading-relaxed">{renderContent(msg.content)}</p>
+                  <p className={`text-[9px] font-bold mt-2 ${msg.role === 'user' ? 'text-slate-200' : 'text-slate-400'}`}>
+                    {msg.timestamp.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </div>
-              )}
-              <div className="px-5 py-4">
-                <p className="text-sm font-medium leading-relaxed whitespace-pre-line">{msg.content}</p>
-                <p className={`text-[9px] font-bold mt-2 ${msg.role === 'user' ? 'text-slate-200' : 'text-slate-400'}`}>
-                  {msg.timestamp.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                </p>
               </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
 
         {isLoading && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
