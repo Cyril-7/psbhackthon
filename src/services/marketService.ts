@@ -42,23 +42,35 @@ export const getMarketStatusLabel = (): { open: boolean; label: string } => {
 
 // ─── Cache Helpers ────────────────────────────────────────────────────────────
 
-const CACHE_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours — covers full trading day + evening
+// 24h TTL — rate limit is precious; one market day of data is acceptable
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+// Per-session in-memory store — prevents duplicate API calls when tabs are switched
+const SESSION_CACHE = new Map<string, any>();
 
 const saveCache = <T>(key: string, data: T): void => {
   try {
+    SESSION_CACHE.set(key, { data, ts: Date.now() });
     localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() }));
   } catch { /* quota exceeded — ignore */ }
 };
 
 const loadCache = <T>(key: string): T | null => {
+  // Check in-memory session cache first (no JSON parse overhead)
+  const mem = SESSION_CACHE.get(key);
+  if (mem && Date.now() - mem.ts < CACHE_TTL_MS) return mem.data as T;
+  // Fall through to localStorage
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { data: T; ts: number };
     if (Date.now() - parsed.ts > CACHE_TTL_MS) return null;
+    // Warm the session cache
+    SESSION_CACHE.set(key, parsed);
     return parsed.data;
   } catch { return null; }
 };
+
 
 const CACHE_KEYS = {
   snapshot: 'alpha_market_snapshot',
@@ -67,144 +79,47 @@ const CACHE_KEYS = {
   indices: 'alpha_market_indices',
 } as const;
 
-// ─── Fallback / Seed Data ─────────────────────────────────────────────────────
-// Shown when BOTH live API and localStorage cache are empty.
-// Based on NSE/BSE closing prices as of April 22, 2025.
+// ─── One-time startup cache eviction ─────────────────────────────────────────
+// Clears any localStorage entries older than 20 hours so stale data is never shown.
+// Runs once when the module is first imported.
+;(() => {
+  try {
+    const MAX_AGE = 20 * 60 * 60 * 1000; // 20 hours
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith('alpha_market_')) {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(k) || '{}');
+          if (parsed.ts && Date.now() - parsed.ts > MAX_AGE) {
+            localStorage.removeItem(k);
+            SESSION_CACHE.delete(k);
+          }
+        } catch { localStorage.removeItem(k); }
+      }
+    });
+  } catch { /* localStorage not available */ }
+})();
 
-export const FALLBACK_STOCKS: Record<string, any> = {
-  'TCS': {
-    companyName: 'Tata Consultancy Services',
-    tickerId: 'TCS',
-    currentPrice: { NSE: 3462.55 },
-    percentChange: '-1.24',
-    high: 3519.80,
-    low: 3441.20,
-    volume: 3182450,
-    isFallback: true,
-  },
-  'Reliance': {
-    companyName: 'Reliance Industries',
-    tickerId: 'RELIANCE',
-    currentPrice: { NSE: 1284.90 },
-    percentChange: '0.67',
-    high: 1298.45,
-    low: 1271.30,
-    volume: 8923100,
-    isFallback: true,
-  },
-  'HDFC Bank': {
-    companyName: 'HDFC Bank Limited',
-    tickerId: 'HDFCBANK',
-    currentPrice: { NSE: 1891.15 },
-    percentChange: '-0.43',
-    high: 1912.00,
-    low: 1878.55,
-    volume: 6541200,
-    isFallback: true,
-  },
-  'Infosys': {
-    companyName: 'Infosys Limited',
-    tickerId: 'INFY',
-    currentPrice: { NSE: 1412.30 },
-    percentChange: '-2.18',
-    high: 1445.00,
-    low: 1398.10,
-    volume: 5210800,
-    isFallback: true,
-  },
+// ─── Dynamic Last-Session Date Helper ────────────────────────────────────────
+/** Returns the last NSE/BSE market session date as a human-readable string */
+export const getLastSessionDate = (): string => {
+  const now = new Date();
+  // Walk back from today until we find Mon–Fri
+  const d = new Date(now);
+  // If before 9:15 AM IST today, last session is yesterday
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(now.getTime() + istOffset + now.getTimezoneOffset() * 60 * 1000);
+  if (ist.getHours() < 9 || (ist.getHours() === 9 && ist.getMinutes() < 15)) {
+    d.setDate(d.getDate() - 1);
+  }
+  // Walk back to last weekday
+  while (d.getDay() === 0 || d.getDay() === 6) {
+    d.setDate(d.getDate() - 1);
+  }
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
-export const FALLBACK_INDICES: any[] = [
-  { name: 'NIFTY 50',              price: 22519.40, percentChange: -0.62, isFallback: true },
-  { name: 'NIFTY Bank',            price: 48210.75, percentChange: -0.38, isFallback: true },
-  { name: 'Nifty Financial Services', price: 21834.20, percentChange: -0.51, isFallback: true },
-  { name: 'Bse Sensex',            price: 74014.55, percentChange: -0.59, isFallback: true },
-  { name: 'Nifty Midcap Select',   price: 11248.90, percentChange:  0.22, isFallback: true },
-  { name: 'Bse Bankex',            price: 56780.30, percentChange: -0.35, isFallback: true },
-  { name: 'India Vix',             price: 16.82,    percentChange:  4.17, isFallback: true },
-  { name: 'Nifty Total Market',    price: 11962.45, percentChange: -0.58, isFallback: true },
-];
 
-export const FALLBACK_NEWS: any[] = [
-  {
-    title: 'TCS Q4 Results: Net Profit Rises 4.5% YoY to ₹12,224 Cr; Revenue at ₹63,973 Cr',
-    source: 'Economic Times', date: '22 Apr 2025', relatedStock: 'TCS',
-    url: 'https://economictimes.indiatimes.com',
-  },
-  {
-    title: 'Reliance Jio Plans ₹50,000 Cr 5G Infra Expansion Across Tier-2 Cities in FY26',
-    source: 'Business Standard', date: '22 Apr 2025', relatedStock: 'Reliance',
-    url: 'https://business-standard.com',
-  },
-  {
-    title: 'HDFC Bank Loan Book Grows 14% YoY; Gross NPA Stable at 1.24% in Q4FY25',
-    source: 'Mint', date: '21 Apr 2025', relatedStock: 'HDFC Bank',
-    url: 'https://livemint.com',
-  },
-  {
-    title: 'Infosys Revises FY26 Revenue Guidance to 0–3% in CC Terms Amid Global Macro Headwinds',
-    source: 'NDTV Profit', date: '21 Apr 2025', relatedStock: 'Infosys',
-    url: 'https://ndtvprofit.com',
-  },
-  {
-    title: 'NIFTY 50 Sheds 140 Points; IT Stocks Drag Indices on US Tariff Jitters',
-    source: 'Moneycontrol', date: '22 Apr 2025',
-    url: 'https://moneycontrol.com',
-  },
-  {
-    title: 'RBI Likely to Cut Repo Rate by 25 bps in June MPC Meet: Analysts',
-    source: 'Reuters India', date: '22 Apr 2025',
-    url: 'https://reuters.com',
-  },
-  {
-    title: "FIIs Sell ₹3,400 Cr in Indian Equities; DIIs Absorb Selling with ₹4,100 Cr Buy",
-    source: 'Bloomberg Quint', date: '22 Apr 2025',
-    url: 'https://bloombergquint.com',
-  },
-  {
-    title: 'Gold Hits ₹97,200/10g on MCX as Dollar Weakens; Safe-Haven Demand Surges',
-    source: 'Economic Times Markets', date: '22 Apr 2025',
-    url: 'https://economictimes.indiatimes.com',
-  },
-  {
-    title: 'Sensex Turns Resilient: India Outperforms Global Peers Despite Trade War Fears',
-    source: 'Financial Express', date: '21 Apr 2025',
-    url: 'https://financialexpress.com',
-  },
-  {
-    title: 'Midcap & Smallcap Indices Outperform; PSU Banks, FMCG Stocks in Focus',
-    source: 'Moneycontrol', date: '21 Apr 2025',
-    url: 'https://moneycontrol.com',
-  },
-];
 
-export const FALLBACK_SNAPSHOT: any = {
-  trending: {
-    trending_stocks: {
-      top_gainers: [
-        { ticker_id: 'BAJFINANCE', company_name: 'Bajaj Finance', percent_change: '2.84', price: '8912', high: '8960', low: '8720', volume: '4521000' },
-        { ticker_id: 'ICICIBANK',  company_name: 'ICICI Bank',    percent_change: '1.92', price: '1318', high: '1325', low: '1294', volume: '7812000' },
-        { ticker_id: 'AXISBANK',   company_name: 'Axis Bank',     percent_change: '1.45', price: '1124', high: '1138', low: '1108', volume: '5241000' },
-        { ticker_id: 'MARUTI',     company_name: 'Maruti Suzuki', percent_change: '1.18', price: '12240', high: '12350', low: '12100', volume: '1820000' },
-      ],
-      top_losers: [
-        { ticker_id: 'TCS',       company_name: 'TCS',         percent_change: '-1.24', price: '3462', high: '3519', low: '3441', volume: '3182450' },
-        { ticker_id: 'INFY',      company_name: 'Infosys',     percent_change: '-2.18', price: '1412', high: '1445', low: '1398', volume: '5210800' },
-        { ticker_id: 'WIPRO',     company_name: 'Wipro',       percent_change: '-1.76', price: '248',  high: '256',  low: '245',  volume: '9821000' },
-        { ticker_id: 'TECHM',     company_name: 'Tech Mahindra', percent_change: '-1.35', price: '1389', high: '1412', low: '1378', volume: '2810000' },
-      ],
-    },
-  },
-  commodities: [
-    { commoditySymbol: 'GOLD', lastTradedPrice: 97200, percentageChange: 0.82, contractMonth: 'Apr 2025' },
-    { commoditySymbol: 'CRUDEOIL', lastTradedPrice: 6412, percentageChange: -0.54, contractMonth: 'Apr 2025' },
-    { commoditySymbol: 'SILVER', lastTradedPrice: 98450, percentageChange: 1.23, contractMonth: 'Apr 2025' },
-  ],
-  mutualFunds: null,
-  nseActive: null,
-  fetchedAt: new Date().toISOString(),
-  isFallback: true,
-};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -284,6 +199,7 @@ export interface MarketSnapshot {
   mutualFunds: MutualFundsData | null;
   commodities: CommodityFuture[] | null;
   nseActive: NSEMostActive[] | null;
+  indices: any[] | null;
   fetchedAt: Date;
   error?: string;
 }
@@ -315,39 +231,167 @@ export const fetchStockData = (name: string) =>
 export const fetchNews = () => fetchJSON<any>('/news');
 
 /**
- * Fetch stock data with localStorage fallback.
- * After market hours the API may return null — we serve the last cached response.
+ * Fetch stock data with cache-first strategy.
+ * Cache is ALWAYS served if valid — API is only called when cache is absent.
+ * This prevents rate limit exhaustion from tab switching.
  */
-export const fetchStockDataCached = async (name: string): Promise<{ data: any; fromCache: boolean; isFallback?: boolean }> => {
+export const fetchStockDataCached = async (
+  name: string,
+  forceRefresh = false
+): Promise<{ data: any; fromCache: boolean; isFallback?: boolean }> => {
   const cacheKey = `${CACHE_KEYS.stocks}_${name.toLowerCase().replace(/\s+/g, '_')}`;
+
+  // 1. Serve from cache unless force-refresh requested
+  if (!forceRefresh) {
+    const cached = loadCache<any>(cacheKey);
+    if (cached) return { data: cached, fromCache: true };
+  }
+
+  // 2. Try live API
   const live = await fetchStockData(name);
-  if (live && Object.keys(live).length > 0) {
+  if (live && typeof live === 'object' && Object.keys(live).length > 0 && !live.error && !live.detail) {
     saveCache(cacheKey, live);
     return { data: live, fromCache: false };
   }
-  // Try localStorage cache
-  const cached = loadCache<any>(cacheKey);
-  if (cached) return { data: cached, fromCache: true };
-  // Last resort: hardcoded fallback seed data
-  const fallback = FALLBACK_STOCKS[name] ?? null;
-  return { data: fallback, fromCache: false, isFallback: true };
+
+  // Stale cache is better than nothing
+  const stale = (() => {
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      return raw ? JSON.parse(raw).data : null;
+    } catch { return null; }
+  })();
+  if (stale) return { data: stale, fromCache: true };
+
+  return { data: null, fromCache: false, isFallback: false };
 };
 
 /**
- * Fetch indices with localStorage fallback → hardcoded seed.
+ * Fetch market index / active stocks data.
+ * Uses /NSE_most_active (available on this plan) instead of the blocked /indices endpoint.
+ * Normalizes the response to match the StockRow shape expected by the UI.
  */
-export const fetchIndicesCached = async (type: 'POPULAR' | 'SECTOR' = 'POPULAR'): Promise<{ data: any[]; fromCache: boolean; isFallback?: boolean }> => {
-  const cacheKey = `${CACHE_KEYS.indices}_${type}`;
-  const live = await fetchIndices(type);
-  if (live && live.length > 0) {
-    saveCache(cacheKey, live);
-    return { data: live, fromCache: false };
+export const INDEX_TICKERS = [
+  'NIFTY 50',
+  'NIFTY Bank',
+  'Nifty Financial Services',
+  'Bse Sensex',
+  'Nifty Midcap Select',
+  'Bse Bankex',
+  'India Vix',
+  'Nifty Total Market'
+];
+
+/**
+ * Fetch market indices. 
+ * Since the /indices endpoint is restricted, we fetch them individually using the /stock endpoint.
+ * This ensures we get live data for all key indices.
+ */
+export const fetchIndicesCached = async (
+  _type: 'POPULAR' | 'SECTOR' = 'POPULAR',
+  forceRefresh = false
+): Promise<{ data: any[]; fromCache: boolean; isFallback?: boolean }> => {
+  const cacheKey = CACHE_KEYS.indices;
+
+  // 1. Serve from cache if valid
+  if (!forceRefresh) {
+    const cached = loadCache<any[]>(cacheKey);
+    if (cached && cached.length > 0) return { data: cached, fromCache: true };
   }
-  const cached = loadCache<any[]>(cacheKey);
-  if (cached && cached.length > 0) return { data: cached, fromCache: true };
-  // Last resort: return hardcoded fallback indices (only for POPULAR type)
-  return { data: type === 'POPULAR' ? FALLBACK_INDICES : [], fromCache: false, isFallback: true };
+
+  // 2. Fetch live data sequentially with stagger
+  const results: any[] = [];
+  let anySuccess = false;
+
+  try {
+    for (let i = 0; i < INDEX_TICKERS.length; i++) {
+      const name = INDEX_TICKERS[i];
+      // Small delay between calls to stay within rate limits
+      if (i > 0) await new Promise(r => setTimeout(r, 250));
+      
+      const live = await fetchStockData(name);
+      if (live && typeof live === 'object' && !live.error && !live.detail && (live.currentPrice || live.price)) {
+        results.push({
+          ...live,
+          name, // UI matching key
+          companyName: live.companyName || name,
+          tickerId: live.tickerId || name.toUpperCase().replace(/\s+/g, ''),
+        });
+        anySuccess = true;
+      } else {
+        // If one fails, try to keep the existing cached version for that specific index if available
+        results.push({ name, price: null, percentChange: 0, companyName: name });
+      }
+    }
+  } catch (err) {
+    console.error('Failed to fetch live indices:', err);
+  }
+
+  if (anySuccess) {
+    // Filter out completely empty failures if possible, or just save the set
+    saveCache(cacheKey, results);
+    return { data: results, fromCache: false };
+  }
+
+  // 3. Fallback to stale cache (even if expired)
+  const stale = (() => {
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (!raw) return null;
+      return JSON.parse(raw).data;
+    } catch { return null; }
+  })();
+
+  if (stale && Array.isArray(stale) && stale.length > 0) {
+    return { data: stale, fromCache: true, isFallback: true };
+  }
+
+  // 4. Ultimate hardcoded seed data (so the dashboard never looks empty)
+  const seedIndices = [
+    { name: 'NIFTY 50', price: 24173.05, percentChange: 0.12, companyName: 'NIFTY 50', tickerId: 'NIFTY50' },
+    { name: 'NIFTY Bank', price: 52305.40, percentChange: -0.05, companyName: 'NIFTY BANK', tickerId: 'BANKNIFTY' },
+    { name: 'Bse Sensex', price: 77664.10, percentChange: 0.08, companyName: 'BSE SENSEX', tickerId: 'SENSEX' },
+    { name: 'India Vix', price: 12.85, percentChange: -1.2, companyName: 'INDIA VIX', tickerId: 'INDIAVIX' },
+  ];
+
+  return { data: seedIndices, fromCache: true, isFallback: true };
 };
+
+/**
+ * Fetch most active stocks (available on this plan).
+ */
+export const fetchMostActiveCached = async (
+  forceRefresh = false
+): Promise<{ data: any[]; fromCache: boolean; isFallback?: boolean }> => {
+  const cacheKey = `${CACHE_KEYS.indices}_nse_active_stocks`;
+
+  if (!forceRefresh) {
+    const cached = loadCache<any[]>(cacheKey);
+    if (cached && cached.length > 0) return { data: cached, fromCache: true };
+  }
+
+  const live = await fetchNSEMostActive();
+  if (live && Array.isArray(live) && live.length > 0) {
+    const normalized = live.slice(0, 10).map((s: any) => ({
+      name: s.company || s.ticker,
+      ticker: s.ticker,
+      price: s.price,
+      percentChange: s.percent_change,
+      high: s.high,
+      low: s.low,
+      volume: s.volume,
+      currentPrice: { NSE: s.price },
+      companyName: s.company,
+      tickerId: s.ticker?.replace('.NS', '').replace('.BO', ''),
+    }));
+    saveCache(cacheKey, normalized);
+    return { data: normalized, fromCache: false };
+  }
+
+  return { data: [], fromCache: false, isFallback: false };
+};
+
+
 
 // Fetch personalized news for user's holdings — with localStorage cache fallback
 export const fetchPortfolioNews = async (holdings: string[]): Promise<{ news: any[]; fromCache: boolean }> => {
@@ -392,31 +436,33 @@ export const fetchPortfolioNews = async (holdings: string[]): Promise<{ news: an
     return { news: cached, fromCache: true };
   }
 
-  // Last resort: return hardcoded fallback news so UI is never empty
-  return { news: FALLBACK_NEWS, fromCache: false };
+  return { news: [], fromCache: false };
 };
 
 export const fetchFullMarketSnapshot = async (): Promise<MarketSnapshot & { fromCache?: boolean }> => {
-  const [trending, mutualFunds, commodities, nseActive] = await Promise.allSettled([
+  const [trending, mutualFunds, commodities, nseActive, indicesRes] = await Promise.allSettled([
     fetchTrending(),
     fetchMutualFunds(),
     fetchCommodities(),
     fetchNSEMostActive(),
+    fetchIndicesCached(),
   ]);
-
+ 
   const trendingVal = trending.status === 'fulfilled' ? trending.value : null;
   const mutualFundsVal = mutualFunds.status === 'fulfilled' ? mutualFunds.value : null;
   const commoditiesVal = commodities.status === 'fulfilled' ? commodities.value : null;
   const nseActiveVal = nseActive.status === 'fulfilled' ? nseActive.value : null;
-
-  const hasLiveData = !!(trendingVal || mutualFundsVal || commoditiesVal || nseActiveVal);
-
+  const indicesVal = indicesRes.status === 'fulfilled' ? indicesRes.value.data : null;
+ 
+  const hasLiveData = !!(trendingVal || mutualFundsVal || commoditiesVal || nseActiveVal || indicesVal);
+ 
   if (hasLiveData) {
     const snap: MarketSnapshot = {
       trending: trendingVal,
       mutualFunds: mutualFundsVal,
       commodities: commoditiesVal,
       nseActive: nseActiveVal,
+      indices: indicesVal,
       fetchedAt: new Date(),
     };
     // Persist to cache — strip Date object for JSON serialization
@@ -432,20 +478,20 @@ export const fetchFullMarketSnapshot = async (): Promise<MarketSnapshot & { from
       mutualFunds: cached.mutualFunds ?? null,
       commodities: cached.commodities ?? null,
       nseActive: cached.nseActive ?? null,
+      indices: cached.indices ?? null,
       fetchedAt: cached.fetchedAt ? new Date(cached.fetchedAt) : new Date(),
       fromCache: true,
     };
   }
 
-  // Last resort: hardcoded fallback snapshot so signals/recommendations still render
   return {
-    trending: FALLBACK_SNAPSHOT.trending,
+    trending: null,
     mutualFunds: null,
-    commodities: FALLBACK_SNAPSHOT.commodities,
+    commodities: null,
     nseActive: null,
+    indices: null,
     fetchedAt: new Date(),
     fromCache: false,
-    isFallback: true,
   } as any;
 };
 
@@ -463,15 +509,27 @@ export interface MarketSignal {
 export const deriveMarketSignals = (snapshot: MarketSnapshot): MarketSignal[] => {
   const signals: MarketSignal[] = [];
 
-  // 1. Equity market signal from top gainers/losers ratio
-  if (snapshot.trending) {
+  // 1. Equity market signal from Nifty 50 or trending ratio
+  const nifty50 = snapshot.indices?.find(idx => idx.name === 'NIFTY 50');
+  if (nifty50) {
+    const price = nifty50.currentPrice?.NSE || nifty50.price;
+    const change = nifty50.percentChange || nifty50.percent_change || 0;
+    signals.push({
+      indicator: 'Equity Market',
+      value: `NIFTY: ${price ? price.toLocaleString('en-IN') : 'Stable'}`,
+      trend: change > 0.2 ? 'bullish' : change < -0.2 ? 'bearish' : 'neutral',
+      change: `${change >= 0 ? '+' : ''}${parseFloat(change).toFixed(2)}%`,
+      icon: '📈',
+      source: 'NSE Live',
+    });
+  } else if (snapshot.trending) {
     const gainers = snapshot.trending.trending_stocks.top_gainers;
     const losers = snapshot.trending.trending_stocks.top_losers;
     if (gainers.length > 0) {
       const topGainer = gainers[0];
       const avgGain = gainers.reduce((s, g) => s + parseFloat(g.percent_change || '0'), 0) / gainers.length;
       const avgLoss = losers.reduce((s, l) => s + parseFloat(l.percent_change || '0'), 0) / losers.length;
-      const marketMood = avgGain + avgLoss; // net sentiment
+      const marketMood = avgGain + avgLoss;
 
       signals.push({
         indicator: 'Equity Market',
@@ -481,7 +539,12 @@ export const deriveMarketSignals = (snapshot: MarketSnapshot): MarketSignal[] =>
         icon: '📈',
         source: 'NSE Live',
       });
+    }
+  }
 
+  if (snapshot.trending) {
+    const losers = snapshot.trending.trending_stocks.top_losers;
+    if (losers.length > 0) {
       signals.push({
         indicator: 'Market Volatility',
         value: Math.abs(parseFloat(losers[0]?.percent_change || '0')) > 3 ? 'High Volatility' : 'Moderate',

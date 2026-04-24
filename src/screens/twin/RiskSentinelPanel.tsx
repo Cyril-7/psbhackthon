@@ -186,7 +186,7 @@ const RiskSentinelPanel: React.FC = () => {
           <SectionHeader icon={Shield} title="Concentration Analysis" subtitle="Asset class distribution" badge={`${NET_WORTH_METRICS.concentrationScore}% Property Heavy`} />
           <div className="flex flex-col sm:flex-row items-center gap-8 mt-6">
             <div className="w-44 h-44 shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <PieChart>
                   <Pie data={assetAllocationData} dataKey="value" cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} stroke="none">
                     {assetAllocationData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}

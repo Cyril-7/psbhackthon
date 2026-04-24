@@ -3,12 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, TrendingDown, Minus, RefreshCw, Shield, AlertTriangle,
   CheckCircle, XCircle, Clock, Zap, BarChart3, ChevronRight,
-  ArrowRight, ArrowUpRight, Info, Wifi, WifiOff, Activity, Lock,
+  ArrowRight, ArrowUpRight, Wifi, WifiOff, Activity, Lock,
   Newspaper, ExternalLink, Search,
 } from 'lucide-react';
 import {
   fetchFullMarketSnapshot, deriveMarketSignals, buildRecommendations,
-  fetchPortfolioNews, fetchStockDataCached, fetchIndicesCached, getMarketStatusLabel,
+  fetchPortfolioNews, fetchStockDataCached, fetchIndicesCached, fetchMostActiveCached, getMarketStatusLabel,
+  getLastSessionDate, INDEX_TICKERS,
   type MarketSnapshot, type MarketSignal, type StrategyRecommendation,
 } from '../../services/marketService';
 import { getGeminiResponse } from '../../services/gemini';
@@ -128,19 +129,23 @@ const MarketStatusStrip: React.FC<{ signals: MarketSignal[] }> = ({ signals }) =
 
 const StockRow: React.FC<{ data: any; name: string }> = ({ data, name }) => {
   // Support both live API shape and fallback/index shape
-  const price = data?.currentPrice?.NSE ?? data?.currentPrice?.BSE ?? data?.price ?? null;
-  const change = parseFloat(data?.percentChange ?? data?.percent_change ?? '0');
+  const price = data?.currentPrice?.NSE ?? data?.currentPrice?.BSE ?? data?.price ?? data?.lastTradedPrice ?? null;
+  const change = parseFloat(data?.percentChange ?? data?.percent_change ?? data?.percentageChange ?? '0');
   const isUp = change >= 0;
-  const high = data?.high ?? data?.dayHigh ?? null;
-  const low = data?.low ?? data?.dayLow ?? null;
-  const volume = data?.volume ?? null;
+  const high = data?.high ?? data?.dayHigh ?? data?.yearHigh ?? data?.highPrice ?? null;
+  const low = data?.low ?? data?.dayLow ?? data?.yearLow ?? data?.lowPrice ?? null;
+  const volume = data?.volume ?? data?.totalVolume ?? null;
   const isFallback = !!(data?.isFallback);
   const noData = price === null;
 
   const fmtPrice = (v: number | string | null) => {
     if (v === null || v === undefined) return '—';
     const n = typeof v === 'string' ? parseFloat(v) : v;
-    return isNaN(n) ? '—' : n.toLocaleString('en-IN');
+    if (isNaN(n)) return '—';
+    return n.toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
   };
 
   return (
@@ -343,25 +348,17 @@ const MarketRecommendationEngine: React.FC<Props> = ({ profile }) => {
   const [stocksIsFallback, setStocksIsFallback] = useState(false);
   const [marketStatus, setMarketStatus] = useState(getMarketStatusLabel());
 
-  // Live stocks state
   const [stocksData, setStocksData] = useState<Record<string, any>>({});
   const [indicesData, setIndicesData] = useState<any[]>([]);
+  const [mostActiveData, setMostActiveData] = useState<any[]>([]);
   const [stocksLoading, setStocksLoading] = useState(false);
+  const [stocksFetched, setStocksFetched] = useState(false);
+
   const [stockSearch, setStockSearch] = useState('');
   const [searchResult, setSearchResult] = useState<any>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [stockSubTab, setStockSubTab] = useState<'indian' | 'global'>('indian');
 
-  const INDEX_TICKERS = [
-    'NIFTY 50',
-    'NIFTY Bank',
-    'Nifty Financial Services',
-    'Bse Sensex',
-    'Nifty Midcap Select',
-    'Bse Bankex',
-    'India Vix',
-    'Nifty Total Market'
-  ];
 
   const portfolioMix = { equity: 1250000 + 650000, debt: 500000 + 215000 + 380000, gold: 350000 + 560000, fd: 500000, cash: 185000 + 124000 + 8200 };
   const riskProfile = profile.riskPreference === 'high' ? 'aggressive' as const : 'moderate' as const;
@@ -396,56 +393,108 @@ const MarketRecommendationEngine: React.FC<Props> = ({ profile }) => {
 
   useEffect(() => { loadMarketData(); }, [loadMarketData]);
 
+  // Clear stale cache keys that still hold Apr 22 2025 data on first load
+  useEffect(() => {
+    const keys = ['alpha_market_snapshot', 'alpha_market_news', 'alpha_market_stocks', 'alpha_market_indices'];
+    let cleared = false;
+    keys.forEach(k => {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          const ts = parsed.ts || 0;
+          // If cached data is older than 48 hours, evict it
+          if (Date.now() - ts > 48 * 60 * 60 * 1000) {
+            localStorage.removeItem(k);
+            cleared = true;
+          }
+        } catch { localStorage.removeItem(k); cleared = true; }
+      }
+    });
+    // Also clear stock-specific caches older than 48h
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith('alpha_market_stocks_')) {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Date.now() - (parsed.ts || 0) > 48 * 60 * 60 * 1000) {
+              localStorage.removeItem(k);
+              cleared = true;
+            }
+          } catch { localStorage.removeItem(k); cleared = true; }
+        }
+      }
+    });
+    if (cleared) loadMarketData();
+  }, [loadMarketData]);
+
   // Load stocks data when stocks tab is active
+  // Staggered sequential stock fetcher — avoids rate limit bursting
+  const loadStocks = useCallback(async (forceRefresh = false) => {
+    if (stocksLoading && !forceRefresh) return;
+    
+    // 1. Immediate Load from Cache to avoid "empty" state
+    if (!stocksFetched || forceRefresh) {
+      const cachedIndices = await fetchIndicesCached('POPULAR', false);
+      if (cachedIndices.data.length > 0) {
+        setIndicesData(cachedIndices.data);
+      }
+      
+      const cachedActive = await fetchMostActiveCached(false);
+      if (cachedActive.data.length > 0) {
+        setMostActiveData(cachedActive.data);
+      }
+    }
+
+    setStocksLoading(true);
+    let anyFromCache = false;
+    let anyFallback = false;
+
+    try {
+      // ── Holdings: sequential with 300ms stagger ──
+      const holdResults: Record<string, any> = {};
+      for (let i = 0; i < USER_HOLDINGS.length; i++) {
+        const name = USER_HOLDINGS[i];
+        if (i > 0) await new Promise(r => setTimeout(r, 300));
+        const { data, fromCache, isFallback } = await fetchStockDataCached(name, forceRefresh);
+        if (data) {
+          holdResults[name] = data;
+          if (fromCache) anyFromCache = true;
+          if (isFallback) anyFallback = true;
+        }
+      }
+
+      // ── Indices ──
+      const indicesRes = await fetchIndicesCached('POPULAR', forceRefresh);
+      
+      // ── Most Active Stocks ──
+      await new Promise(r => setTimeout(r, 300));
+      const activeRes = await fetchMostActiveCached(forceRefresh);
+
+      setStocksData(holdResults);
+      if (indicesRes.data.length > 0) setIndicesData(indicesRes.data);
+      if (activeRes.data.length > 0) setMostActiveData(activeRes.data);
+      
+      setStocksFromCache(anyFromCache || indicesRes.fromCache || activeRes.fromCache || false);
+      setStocksIsFallback(anyFallback || indicesRes.isFallback || false);
+      setStocksFetched(true);
+    } catch (err) {
+      console.error('Error loading stocks/indices:', err);
+    } finally {
+      setStocksLoading(false);
+    }
+  }, [stocksLoading, stocksFetched]);
+
   useEffect(() => {
     if (activeTab !== 'stocks') return;
-    const loadStocks = async () => {
-      setStocksLoading(true);
-      let anyFromCache = false;
-      try {
-        // 1. Fetch user holdings with cache fallback
-        const holdResults: Record<string, any> = {};
-        const holdPromises = USER_HOLDINGS.map(async name => {
-          const { data, fromCache } = await fetchStockDataCached(name);
-          if (data) { holdResults[name] = data; if (fromCache) anyFromCache = true; }
-        });
-
-        // 2. Fetch all indices with cache fallback
-        const [popRes, secRes] = await Promise.allSettled([
-          fetchIndicesCached('POPULAR'),
-          fetchIndicesCached('SECTOR')
-        ]);
-
-        const allIndices = [
-          ...(popRes.status === 'fulfilled' ? popRes.value.data : []),
-          ...(secRes.status === 'fulfilled' ? secRes.value.data : [])
-        ];
-        if (
-          (popRes.status === 'fulfilled' && popRes.value.fromCache) ||
-          (secRes.status === 'fulfilled' && secRes.value.fromCache)
-        ) anyFromCache = true;
-
-        await Promise.allSettled(holdPromises);
-        setStocksData(holdResults);
-        setIndicesData(allIndices);
-        setStocksFromCache(anyFromCache);
-        // Check if any returned data is fallback
-        const anyFallback = Object.values(holdResults).some((d: any) => d?.isFallback) ||
-          allIndices.some((d: any) => d?.isFallback);
-        setStocksIsFallback(anyFallback);
-      } catch (err) {
-        console.error('Error loading stocks/indices:', err);
-      } finally {
-        setStocksLoading(false);
-      }
-    };
-    loadStocks();
-  }, [activeTab]);
+    if (!stocksFetched) loadStocks();
+  }, [activeTab, stocksFetched, loadStocks]);
 
   const handleSearchStock = async () => {
     if (!stockSearch.trim()) return;
     setSearchLoading(true);
-    const data = await fetchStockData(stockSearch.trim());
+    const { data } = await fetchStockDataCached(stockSearch.trim(), true); // always fresh for search
     setSearchResult(data);
     setSearchLoading(false);
   };
@@ -533,11 +582,11 @@ const MarketRecommendationEngine: React.FC<Props> = ({ profile }) => {
             <Clock className="w-4 h-4 text-amber-500 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-black text-amber-800 uppercase tracking-wide">
-                {dataIsFallback ? 'Last Session Data (Apr 22, 2025)' : dataFromCache ? 'Cached Data' : 'Market Closed'}
+                {dataIsFallback ? `Last Session Data (${getLastSessionDate()})` : dataFromCache ? 'Cached Data' : 'Market Closed'}
               </p>
               <p className="text-[9px] font-medium text-amber-700 leading-relaxed">
                 {dataIsFallback
-                  ? 'NSE/BSE data unavailable after hours. Showing Apr 22 closing prices. Live prices return Mon–Fri 9:15–15:30 IST.'
+                  ? `NSE/BSE data unavailable after hours. Showing ${getLastSessionDate()} closing prices. Live prices return Mon–Fri 9:15–15:30 IST.`
                   : dataFromCache
                     ? 'Serving cached last-session data. Prices update when market reopens.'
                     : 'NSE/BSE closed. Displaying last session data. Market reopens Mon–Fri at 9:15 AM IST.'}
@@ -673,20 +722,33 @@ const MarketRecommendationEngine: React.FC<Props> = ({ profile }) => {
                   {/* Live Indices */}
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">🏛️ Live Indices</p>
-                    {stocksLoading ? (
+                    {stocksLoading && indicesData.length === 0 ? (
                       <div className="flex items-center justify-center py-6 gap-2"><RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" /><span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Loading indices…</span></div>
                     ) : (
                       <div className="space-y-1.5">
-                        {INDEX_TICKERS.map(name => {
-                          // Try to find in indicesData first
-                          const item = indicesData.find((idx: any) => 
+                        {(INDEX_TICKERS || []).map(name => {
+                          const item = (indicesData || []).find((idx: any) => 
                             idx.name?.toLowerCase().includes(name.toLowerCase()) || 
                             name.toLowerCase().includes(idx.name?.toLowerCase())
                           );
                           return (
-                            <StockRow key={name} name={name} data={item || stocksData[name] || null} />
+                            <StockRow key={name} name={name} data={item || null} />
                           );
                         })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Most Active Stocks */}
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">🔥 Most Active Stocks (NSE)</p>
+                    {stocksLoading && mostActiveData.length === 0 ? (
+                      <div className="flex items-center justify-center py-6 gap-2"><RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" /><span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Loading market pulse…</span></div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {mostActiveData.map((s: any) => (
+                          <StockRow key={s.ticker} name={s.name} data={s} />
+                        ))}
                       </div>
                     )}
                   </div>

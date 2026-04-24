@@ -5,8 +5,9 @@ import {
   Smartphone, MapPin, Zap, Fingerprint, Wifi, Timer,
   Shield, Activity, TrendingUp, Phone, UserCheck, FileWarning,
   Snowflake, Siren, ChevronDown, ChevronUp, ArrowRight, Radio, Layers,
-  BarChart3, Globe, History, Cpu, HeartPulse,
+  BarChart3, Globe, History, Cpu, HeartPulse, FlaskConical,
 } from 'lucide-react';
+import TransactionSimulator from './TransactionSimulator';
 import {
   CURRENT_RISK_ASSESSMENT, USER_BEHAVIORAL_BASELINE, DETECTED_ANOMALIES,
   ASSET_PROTECTION_RULES, RECENT_DECISIONS, DECISION_OUTCOMES,
@@ -81,10 +82,11 @@ function countdownLabel(expiresAt: string): string {
    TAB NAVIGATION
    ═══════════════════════════════════════════════════════════════════════════ */
 
-type ShieldTab = 'overview' | 'signals' | 'decisions' | 'cooling' | 'devices' | 'history';
+type ShieldTab = 'overview' | 'signals' | 'decisions' | 'cooling' | 'devices' | 'history' | 'simulate';
 
 const TABS: { id: ShieldTab; label: string; icon: React.ElementType }[] = [
   { id: 'overview',  label: 'Shield',    icon: Shield },
+  { id: 'simulate',  label: 'Simulate',  icon: FlaskConical },
   { id: 'signals',   label: 'Signals',   icon: Radio },
   { id: 'decisions', label: 'Decisions', icon: Layers },
   { id: 'cooling',   label: 'Cool-Off',  icon: Timer },
@@ -974,6 +976,11 @@ const FraudShieldPanel: React.FC = () => {
               </motion.div>
             </div>
           )}
+
+          {/* ═══════════════════════════════════════════════════════════════
+              TAB: SIMULATE — Live Transaction Security Simulator
+              ═══════════════════════════════════════════════════════════════ */}
+          {activeTab === 'simulate' && <TransactionSimulator />}
 
         </motion.div>
       </AnimatePresence>

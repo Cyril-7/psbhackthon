@@ -137,7 +137,7 @@ const DashboardScreen = ({ profile, onSectionChange }: DashboardProps) => {
                     </span>
                   </div>
                   <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                       <AreaChart data={MOCK_NET_WORTH_TIMELINE} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
                           <linearGradient id="dashGrad" x1="0" y1="0" x2="0" y2="1">
@@ -203,7 +203,7 @@ const DashboardScreen = ({ profile, onSectionChange }: DashboardProps) => {
                 <div className="bg-[#fdfcf9] border border-[#e6e4d9] rounded-[32px] p-8 shadow-sm">
                   <p className="text-[10px] font-black text-[#8a9bb0] uppercase tracking-widest mb-6">Asset Allocation</p>
                   <div className="h-48 mb-6">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                       <PieChart>
                         <Pie data={allocationData} dataKey="value" cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={8} stroke="none">
                           {allocationData.map((e, i) => <Cell key={i} fill={e.color} />)}

@@ -379,7 +379,7 @@ const InvestScreen: React.FC<{ profile: ProfileData }> = ({ profile }) => {
                 <motion.div variants={itemVars} className="md:col-span-2 lg:col-span-2">
                   <div className="bg-[#fdfcf9] rounded-[32px] p-8 border border-[#e6e4d9] shadow-sm flex flex-col md:flex-row items-center gap-10 relative overflow-hidden">
                     <div className="w-full md:w-[350px] h-[300px] relative z-10">
-                      <ResponsiveContainer width="100%" height="100%">
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                         <PieChart>
                           <Pie data={investAllocation} cx="50%" cy="50%" innerRadius={85} outerRadius={115} paddingAngle={6} dataKey="value" stroke="none">
                             {investAllocation.map((e, i) => <Cell key={i} fill={e.color} />)}
