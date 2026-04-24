@@ -7,7 +7,7 @@ import type { RiskAlert } from '../../data/wealthTwinData';
 import { containerVars, itemVars } from '../twin/TwinUtils';
 import {
   Clock, Heart, Users, ShieldAlert, ArrowRight,
-  Shield, CheckCircle2, AlertTriangle,
+  Shield, AlertTriangle,
 } from 'lucide-react';
 
 const fmtShort = (v: number) =>

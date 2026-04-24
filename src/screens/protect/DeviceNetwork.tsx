@@ -7,7 +7,7 @@ import {
 import { containerVars, itemVars } from '../twin/TwinUtils';
 import {
   Smartphone, MapPin, Shield, Lock, Fingerprint,
-  Wifi, CheckCircle2, XCircle, Clock, ChevronRight,
+  Wifi, CheckCircle2, XCircle, Clock,
 } from 'lucide-react';
 
 const fmtShort = (v: number) =>
